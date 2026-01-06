@@ -1,0 +1,57 @@
+<div class="mx-auto w-full max-w-6xl">
+  <div class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+    <section class="rounded-3xl border border-line bg-white/90 p-6 shadow-soft">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-xs uppercase tracking-[0.2em] text-muted">Preview</div>
+          <h2 class="mt-1 text-lg font-semibold text-ink">Your post</h2>
+        </div>
+        <button *ngIf="selectedFile" class="rounded-full border border-line px-3 py-1 text-xs font-semibold text-muted transition hover:border-ink/40 hover:text-ink" type="button" (click)="clearSelectedFile()">
+          Remove
+        </button>
+      </div>
+
+      <div class="mt-4 overflow-hidden rounded-2xl border border-line bg-sand">
+        <div class="relative aspect-square">
+          <img *ngIf="previewUrl; else emptyPreview" class="h-full w-full object-cover" [src]="previewUrl" [alt]="selectedFile?.name || 'Preview image'">
+          <ng-template #emptyPreview>
+            <div class="flex h-full items-center justify-center text-sm text-muted">Choose a photo to preview.</div>
+          </ng-template>
+        </div>
+      </div>
+
+      <div class="mt-4 rounded-2xl bg-cream/70 px-4 py-3 text-sm text-ink">
+        <div class="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-muted">
+          <span>Caption</span>
+          <span *ngIf="selectedFile">{{ formatFileSize(selectedFile.size) }}</span>
+        </div>
+        <p class="mt-2 whitespace-pre-line text-sm">
+          <span class="font-semibold">you</span>
+          <span *ngIf="captionPreview"> {{ captionPreview }}</span>
+          <span *ngIf="!captionPreview" class="text-muted"> Add a caption to see it here.</span>
+        </p>
+      </div>
+    </section>
+
+    <section class="rounded-3xl border border-line bg-white/90 p-8 shadow-soft">
+      <div class="brand text-center text-4xl text-ink">Riad</div>
+      <h1 class="mt-2 text-center text-2xl font-semibold text-ink">Create New Post</h1>
+      <p class="mt-1 text-center text-sm text-muted">Share a moment with your followers.</p>
+      <form class="mt-6 space-y-4" [formGroup]="createPostForm" (ngSubmit)="onCreatePost()">
+        <label class="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-dashed border-line bg-cream/70 p-6 text-center transition hover:border-accent">
+          <input #fileInput class="hidden" type="file" accept="image/*" (change)="onFileSelected($event)" required>
+          <span class="material-icons text-4xl text-accent">add_photo_alternate</span>
+          <span class="text-sm font-semibold text-ink">{{ selectedFile?.name || 'Select a photo to upload' }}</span>
+          <span class="text-xs text-muted">{{ selectedFile ? formatFileSize(selectedFile.size) : 'PNG or JPG up to 10MB.' }}</span>
+        </label>
+        <textarea class="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none" formControlName="caption" rows="5" placeholder="Write a caption..."></textarea>
+        <button class="w-full rounded-full bg-gradient-to-r from-accent to-accent-strong px-5 py-3 text-sm font-semibold text-white shadow-glow transition hover:opacity-90" type="submit" [disabled]="!createPostForm.valid || !selectedFile">
+          Share Post
+        </button>
+      </form>
+      <div *ngIf="errorMessage" class="mt-4 text-sm text-red-600">
+        {{ errorMessage }}
+      </div>
+    </section>
+  </div>
+</div>

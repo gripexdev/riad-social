@@ -1,0 +1,33 @@
+<div *ngIf="profile" class="mx-auto w-full max-w-6xl space-y-6">
+  <section class="rounded-3xl border border-line bg-white/90 p-6 shadow-soft">
+    <div class="flex flex-col gap-6 md:flex-row md:items-center">
+      <div class="h-28 w-28 rounded-full bg-cover bg-center ring-4 ring-cream" [style.backgroundImage]="'url(' + (profile.profilePictureUrl || 'https://via.placeholder.com/150') + ')'"></div>
+      <div class="flex-1 space-y-3">
+        <div class="flex flex-wrap items-center gap-4">
+          <h2 class="text-2xl font-semibold text-ink">{{ profile.username }}</h2>
+          <button class="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:border-ink/40" *ngIf="!isOwnProfile && authService.isAuthenticated()" type="button" (click)="onFollowToggle()">
+            {{ profile.isFollowing ? 'Unfollow' : 'Follow' }}
+          </button>
+        </div>
+        <div class="text-sm text-muted">{{ profile.fullName }}</div>
+        <p class="text-sm text-ink">{{ profile.bio }}</p>
+        <div class="flex flex-wrap gap-6 text-sm text-muted">
+          <span><span class="font-semibold text-ink">{{ profile.postCount }}</span> posts</span>
+          <span><span class="font-semibold text-ink">{{ profile.followerCount }}</span> followers</span>
+          <span><span class="font-semibold text-ink">{{ profile.followingCount }}</span> following</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="mb-4 flex items-center justify-between">
+      <h3 class="text-lg font-semibold text-ink">Posts</h3>
+    </div>
+    <div class="grid gap-6 md:grid-cols-2">
+      <div *ngFor="let post of profile.posts" class="fade-up">
+        <app-post-card [post]="post"></app-post-card>
+      </div>
+    </div>
+  </section>
+</div>

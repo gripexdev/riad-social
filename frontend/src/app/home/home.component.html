@@ -1,0 +1,36 @@
+<div class="mx-auto w-full max-w-6xl">
+  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <section class="space-y-6">
+      <div class="rounded-3xl border border-line bg-white/90 p-6 shadow-soft">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 class="text-2xl font-semibold text-ink">Home Feed</h2>
+            <p class="text-sm text-muted">Fresh posts from your circle.</p>
+          </div>
+          <a class="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-accent to-accent-strong px-4 py-2 text-sm font-semibold text-white shadow-glow transition hover:opacity-90" routerLink="/create-post">
+            Share a post
+          </a>
+        </div>
+      </div>
+      <div class="space-y-6">
+        <div *ngFor="let post of posts" class="fade-up">
+          <app-post-card [post]="post"></app-post-card>
+        </div>
+      </div>
+    </section>
+    <aside class="sticky top-24 hidden h-fit flex-col gap-6 lg:flex">
+      <div class="rounded-3xl border border-line bg-white/90 p-6 shadow-soft">
+        <div class="text-xs uppercase tracking-[0.2em] text-muted">Ideas</div>
+        <h3 class="mt-2 text-lg font-semibold text-ink">Keep your feed alive</h3>
+        <p class="mt-2 text-sm text-muted">Share a photo, add a caption, and post regularly.</p>
+        <a class="mt-4 inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:border-ink/40 hover:text-ink" routerLink="/create-post">
+          Create a post
+        </a>
+      </div>
+      <div class="rounded-3xl border border-line bg-white/90 p-6 shadow-soft">
+        <div class="text-xs uppercase tracking-[0.2em] text-muted">Focus</div>
+        <p class="mt-2 text-sm text-muted">Build your audience with consistent visuals and short captions.</p>
+      </div>
+    </aside>
+  </div>
+</div>

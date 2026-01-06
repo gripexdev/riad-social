@@ -1,0 +1,32 @@
+<div class="mx-auto flex min-h-[calc(100vh-120px)] w-full max-w-md items-center">
+  <div class="w-full rounded-3xl border border-line bg-white/90 p-8 shadow-soft">
+    <div class="brand text-center text-4xl text-ink">Riad</div>
+    <h1 class="mt-2 text-center text-2xl font-semibold text-ink">Create your account</h1>
+    <p class="mt-1 text-center text-sm text-muted">Join and share your best moments.</p>
+    <form class="mt-6 space-y-4" [formGroup]="registerForm" (ngSubmit)="register()">
+      <div>
+        <label class="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Email</label>
+        <input class="mt-2 w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none" formControlName="email" required>
+      </div>
+      <div>
+        <label class="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Full Name</label>
+        <input class="mt-2 w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none" formControlName="fullName" required>
+      </div>
+      <div>
+        <label class="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Username</label>
+        <input class="mt-2 w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none" formControlName="username" required>
+      </div>
+      <div>
+        <label class="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Password</label>
+        <input class="mt-2 w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none" formControlName="password" type="password" required>
+      </div>
+      <button class="w-full rounded-full bg-gradient-to-r from-accent to-accent-strong px-5 py-3 text-sm font-semibold text-white shadow-glow transition hover:opacity-90" type="submit" [disabled]="!registerForm.valid">Register</button>
+    </form>
+    <div *ngIf="errorMessage" class="mt-4 text-sm text-red-600">
+      {{ errorMessage }}
+    </div>
+    <div class="mt-6 text-center text-sm text-muted">
+      Already have an account? <a class="font-semibold text-accent" routerLink="/login">Login here</a>
+    </div>
+  </div>
+</div>

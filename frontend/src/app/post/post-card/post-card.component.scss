@@ -1,0 +1,144 @@
+.post-card {
+  max-width: 560px;
+  width: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+  animation: fadeUp 0.5s ease both;
+}
+
+.post-header {
+  padding: 18px 20px 10px;
+  align-items: center;
+}
+
+.post-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.post-user {
+  margin: 0;
+  font-weight: 600;
+}
+
+.post-user a {
+  color: var(--ink);
+}
+
+.post-time {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.post-avatar {
+  background-size: cover;
+  background-position: center;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px var(--surface-soft);
+}
+
+.post-media {
+  position: relative;
+}
+
+.post-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+
+.post-body {
+  padding: 12px 20px 4px;
+}
+
+.caption {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.caption-user {
+  font-weight: 600;
+  margin-right: 6px;
+}
+
+mat-card-actions.post-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 8px 16px 12px;
+  color: var(--muted);
+}
+
+.action-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.comments-section {
+  padding: 12px 20px 18px;
+  border-top: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 247, 242, 0.9));
+}
+
+.comment-list {
+  max-height: 160px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.comment-item {
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+  word-wrap: break-word;
+}
+
+.comment-item strong {
+  color: var(--ink);
+}
+
+.add-comment-form {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.add-comment-form mat-form-field {
+  flex-grow: 1;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .post-header {
+    padding: 14px 14px 8px;
+  }
+
+  .post-body {
+    padding: 10px 14px 4px;
+  }
+
+  mat-card-actions.post-actions {
+    padding: 6px 12px 10px;
+    gap: 12px;
+  }
+}

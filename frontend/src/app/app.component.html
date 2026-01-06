@@ -1,0 +1,16 @@
+<header class="sticky top-0 z-40 border-b border-line bg-white/80 backdrop-blur">
+  <div class="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3">
+    <a class="brand text-3xl text-ink" routerLink="/home">Riad</a>
+    <nav class="flex flex-wrap items-center gap-2 text-xs font-semibold sm:text-sm">
+      <a class="rounded-full px-4 py-2 text-muted transition hover:bg-sand hover:text-ink" routerLink="/home">Home</a>
+      <a class="rounded-full bg-gradient-to-r from-accent to-accent-strong px-4 py-2 text-white shadow-glow transition hover:opacity-90" *ngIf="authService.isAuthenticated()" routerLink="/create-post">Create</a>
+      <a class="rounded-full px-4 py-2 text-muted transition hover:bg-sand hover:text-ink" *ngIf="!authService.isAuthenticated()" routerLink="/login">Login</a>
+      <a class="rounded-full px-4 py-2 text-muted transition hover:bg-sand hover:text-ink" *ngIf="!authService.isAuthenticated()" routerLink="/register">Register</a>
+      <button class="rounded-full border border-line px-4 py-2 text-muted transition hover:border-ink/40 hover:text-ink" *ngIf="authService.isAuthenticated()" type="button" (click)="logout()">Logout</button>
+    </nav>
+  </div>
+</header>
+
+<main class="px-4 pb-16 pt-6">
+  <router-outlet></router-outlet>
+</main>

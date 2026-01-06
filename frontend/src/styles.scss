@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #f6f1eb;
+  --ink: #1c1a17;
+  --muted: #6a6158;
+  --line: #e4d8cb;
+  --accent: #c65a3b;
+  --accent-strong: #d4a24c;
+  --jade: #1f8a70;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Sora", "ui-sans-serif", "system-ui", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(900px circle at 8% -10%, rgba(198, 90, 59, 0.24), transparent 55%),
+    radial-gradient(900px circle at 92% -20%, rgba(31, 138, 112, 0.18), transparent 50%),
+    linear-gradient(180deg, #fff9f2 0%, #f7efe6 60%, #f2ebe3 100%);
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--accent);
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+.brand {
+  font-family: "Marcellus", serif;
+  letter-spacing: 0.04em;
+}
+
+.fade-up {
+  animation: fadeUp 0.5s ease both;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up {
+    animation: none;
+  }
+}
