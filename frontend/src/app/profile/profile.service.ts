@@ -35,4 +35,15 @@ export class ProfileService {
   unfollowUser(username: string): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/${username}/unfollow`, {});
   }
+
+  updateProfile(bio: string, avatar?: File | null): Observable<Profile> {
+    const formData = new FormData();
+    if (bio !== undefined && bio !== null) {
+      formData.append('bio', bio);
+    }
+    if (avatar) {
+      formData.append('avatar', avatar);
+    }
+    return this.http.put<Profile>(`${this.apiUrl}/me`, formData);
+  }
 }

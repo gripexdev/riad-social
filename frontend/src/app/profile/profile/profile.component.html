@@ -1,12 +1,15 @@
 <div *ngIf="profile" class="mx-auto w-full max-w-6xl space-y-6">
   <section class="rounded-3xl border border-line bg-white/90 p-6 shadow-soft">
     <div class="flex flex-col gap-6 md:flex-row md:items-center">
-      <div class="h-28 w-28 rounded-full bg-cover bg-center ring-4 ring-cream" [style.backgroundImage]="'url(' + (profile.profilePictureUrl || 'https://via.placeholder.com/150') + ')'"></div>
+      <div class="h-28 w-28 rounded-full bg-cover bg-center ring-4 ring-cream" [style.backgroundImage]="'url(' + displayAvatarUrl + ')'"></div>
       <div class="flex-1 space-y-3">
         <div class="flex flex-wrap items-center gap-4">
           <h2 class="text-2xl font-semibold text-ink">{{ profile.username }}</h2>
           <button class="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:border-ink/40" *ngIf="!isOwnProfile && authService.isAuthenticated()" type="button" (click)="onFollowToggle()">
             {{ profile.isFollowing ? 'Unfollow' : 'Follow' }}
+          </button>
+          <button class="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:border-ink/40" *ngIf="isOwnProfile && !isEditing" type="button" (click)="startEdit()">
+            Edit profile
           </button>
         </div>
         <div class="text-sm text-muted">{{ profile.fullName }}</div>
@@ -15,6 +18,52 @@
           <span><span class="font-semibold text-ink">{{ profile.postCount }}</span> posts</span>
           <span><span class="font-semibold text-ink">{{ profile.followerCount }}</span> followers</span>
           <span><span class="font-semibold text-ink">{{ profile.followingCount }}</span> following</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section *ngIf="isOwnProfile && isEditing" class="rounded-3xl border border-line bg-white/90 p-6 shadow-soft">
+    <div class="flex flex-col gap-6 lg:flex-row">
+      <div class="lg:w-1/2">
+        <div class="text-xs uppercase tracking-[0.2em] text-muted">Preview</div>
+        <div class="mt-3 overflow-hidden rounded-2xl border border-line bg-sand">
+          <div class="aspect-square">
+            <img class="h-full w-full object-cover" [src]="displayAvatarUrl" alt="Profile preview">
+          </div>
+        </div>
+        <div class="mt-4 rounded-2xl bg-cream/70 px-4 py-3 text-sm text-ink">
+          <div class="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-muted">
+            <span>Bio</span>
+            <span *ngIf="selectedAvatar">{{ formatFileSize(selectedAvatar.size) }}</span>
+          </div>
+          <p class="mt-2 whitespace-pre-line text-sm">
+            {{ profileForm.value.bio || 'Add a short bio to introduce yourself.' }}
+          </p>
+        </div>
+      </div>
+
+      <div class="lg:w-1/2">
+        <div class="text-xs uppercase tracking-[0.2em] text-muted">Edit details</div>
+        <form class="mt-4 space-y-4" [formGroup]="profileForm" (ngSubmit)="saveProfile()">
+          <label class="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-dashed border-line bg-cream/70 p-5 text-center transition hover:border-accent">
+            <input #avatarInput class="hidden" type="file" accept="image/*" (change)="onAvatarSelected($event)">
+            <span class="material-icons text-4xl text-accent">portrait</span>
+            <span class="text-sm font-semibold text-ink">Change avatar</span>
+            <span class="text-xs text-muted">PNG or JPG up to 10MB.</span>
+          </label>
+          <textarea class="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none" formControlName="bio" rows="5" placeholder="Write a short bio..."></textarea>
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <button class="flex-1 rounded-full bg-gradient-to-r from-accent to-accent-strong px-5 py-3 text-sm font-semibold text-white shadow-glow transition hover:opacity-90 disabled:opacity-60" type="submit" [disabled]="isSaving">
+              {{ isSaving ? 'Saving...' : 'Save changes' }}
+            </button>
+            <button class="flex-1 rounded-full border border-line px-5 py-3 text-sm font-semibold text-ink transition hover:border-ink/40" type="button" (click)="cancelEdit()" [disabled]="isSaving">
+              Cancel
+            </button>
+          </div>
+        </form>
+        <div *ngIf="errorMessage" class="mt-3 text-sm text-red-600">
+          {{ errorMessage }}
         </div>
       </div>
     </div>

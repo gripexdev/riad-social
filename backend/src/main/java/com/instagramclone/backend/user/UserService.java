@@ -44,6 +44,16 @@ public class UserService implements UserDetailsService {
         return userRepository.findByUsername(username);
     }
 
+    public User updateProfile(User user, String bio, String profilePictureUrl) {
+        if (bio != null) {
+            user.setBio(bio);
+        }
+        if (profilePictureUrl != null) {
+            user.setProfilePictureUrl(profilePictureUrl);
+        }
+        return userRepository.save(user);
+    }
+
     public void followUser(String followerUsername, String followingUsername) {
         User follower = userRepository.findByUsername(followerUsername)
                 .orElseThrow(() -> new UsernameNotFoundException("Follower not found"));
