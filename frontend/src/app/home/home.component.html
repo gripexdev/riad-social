@@ -12,6 +12,27 @@
           </a>
         </div>
       </div>
+      <div *ngIf="currentUsername as username" class="rounded-3xl border border-line bg-white/90 p-6 shadow-soft lg:hidden">
+        <div class="flex items-center gap-4">
+          <div class="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent-strong text-lg font-semibold text-white shadow-glow">
+            {{ username[0] | uppercase }}
+          </div>
+          <div>
+            <div class="text-sm font-semibold text-ink">{{ username }}</div>
+            <div class="text-xs text-muted">Your profile hub</div>
+          </div>
+        </div>
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+          <a class="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-xs font-semibold text-ink transition hover:border-ink/40 hover:text-ink" [routerLink]="['/users', username]">
+            <span class="material-icons text-base">person</span>
+            View profile
+          </a>
+          <a class="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-accent to-accent-strong px-4 py-2 text-xs font-semibold text-white shadow-glow transition hover:opacity-90" routerLink="/create-post">
+            <span class="material-icons text-base">add_box</span>
+            New post
+          </a>
+        </div>
+      </div>
       <div class="space-y-6">
         <div *ngFor="let post of posts" class="fade-up">
           <app-post-card [post]="post"></app-post-card>
@@ -19,6 +40,27 @@
       </div>
     </section>
     <aside class="sticky top-24 hidden h-fit flex-col gap-6 lg:flex">
+      <div *ngIf="currentUsername as username" class="rounded-3xl border border-line bg-white/90 p-6 shadow-soft">
+        <div class="flex items-center gap-4">
+          <div class="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent-strong text-lg font-semibold text-white shadow-glow">
+            {{ username[0] | uppercase }}
+          </div>
+          <div>
+            <div class="text-sm font-semibold text-ink">{{ username }}</div>
+            <div class="text-xs text-muted">Your profile hub</div>
+          </div>
+        </div>
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+          <a class="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-xs font-semibold text-ink transition hover:border-ink/40 hover:text-ink" [routerLink]="['/users', username]">
+            <span class="material-icons text-base">person</span>
+            View profile
+          </a>
+          <a class="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-accent to-accent-strong px-4 py-2 text-xs font-semibold text-white shadow-glow transition hover:opacity-90" routerLink="/create-post">
+            <span class="material-icons text-base">add_box</span>
+            New post
+          </a>
+        </div>
+      </div>
       <div class="rounded-3xl border border-line bg-white/90 p-6 shadow-soft">
         <div class="text-xs uppercase tracking-[0.2em] text-muted">Ideas</div>
         <h3 class="mt-2 text-lg font-semibold text-ink">Keep your feed alive</h3>
