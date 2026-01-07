@@ -170,6 +170,14 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.clearAvatarPreview();
   }
 
+  removePost(postId: number): void {
+    if (!this.profile) {
+      return;
+    }
+    this.profile.posts = this.profile.posts.filter(post => post.id !== postId);
+    this.profile.postCount = Math.max(0, this.profile.postCount - 1);
+  }
+
   private setAvatarPreview(file: File): void {
     if (this.avatarPreviewUrl) {
       URL.revokeObjectURL(this.avatarPreviewUrl);

@@ -89,6 +89,23 @@ public class PostController {
         return ResponseEntity.ok(newComment);
     }
 
+    @PutMapping("/posts/{id}")
+    public ResponseEntity<PostResponse> updatePost(
+            @PathVariable Long id,
+            @RequestBody UpdatePostRequest updateRequest,
+            Principal principal) {
+        String username = principal.getName();
+        Post updatedPost = postService.updatePostCaption(id, updateRequest.getCaption(), username);
+        return ResponseEntity.ok(convertToPostResponse(updatedPost, username));
+    }
+
+    @DeleteMapping("/posts/{id}")
+    public ResponseEntity<Void> deletePost(@PathVariable Long id, Principal principal) {
+        String username = principal.getName();
+        postService.deletePost(id, username);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/uploads/{filename:.+}")
     @ResponseBody
     public ResponseEntity<Resource> serveFile(@PathVariable String filename) {

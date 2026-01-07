@@ -1,9 +1,12 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { Post, PostService, CommentResponse } from '../post.service';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import { PostDialogService } from '../post-dialog.service';
 
 @Component({
   selector: 'app-post-card',
@@ -16,16 +19,27 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
   templateUrl: './post-card.component.html',
   styleUrl: './post-card.component.scss'
 })
-export class PostCardComponent implements OnInit {
+export class PostCardComponent implements OnInit, OnDestroy {
   @Input() post!: Post;
+  @Input() canEdit: boolean = false;
+  @Input() canDelete: boolean = false;
+  @Output() postDeleted = new EventEmitter<number>();
   commentForm!: FormGroup;
+  editForm!: FormGroup;
   showComments: boolean = false;
   currentUsername: string | null = null;
+  showActions: boolean = false;
+  isEditing: boolean = false;
+  isSaving: boolean = false;
+  errorMessage: string | null = null;
+  showDeleteConfirm: boolean = false;
+  private readonly destroy$ = new Subject<void>();
 
   constructor(
     private postService: PostService,
     private authService: AuthService,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private postDialogService: PostDialogService
   ) {}
 
   ngOnInit(): void {
@@ -33,6 +47,14 @@ export class PostCardComponent implements OnInit {
     this.commentForm = this.fb.group({
       comment: ['', Validators.required]
     });
+    this.editForm = this.fb.group({
+      caption: ['']
+    });
+    this.postDialogService.activeDeletePostId$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((activeId) => {
+        this.showDeleteConfirm = activeId === this.post.id;
+      });
   }
 
   toggleLike(): void {
@@ -71,5 +93,99 @@ export class PostCardComponent implements OnInit {
 
   toggleComments(): void {
     this.showComments = !this.showComments;
+  }
+
+  get isOwner(): boolean {
+    return !!this.currentUsername && this.currentUsername === this.post.username;
+  }
+
+  get hasActions(): boolean {
+    return this.isOwner && (this.canEdit || this.canDelete);
+  }
+
+  toggleActions(): void {
+    if (!this.hasActions) {
+      return;
+    }
+    this.showActions = !this.showActions;
+  }
+
+  startEdit(): void {
+    if (!this.isOwner || !this.canEdit) {
+      return;
+    }
+    this.errorMessage = null;
+    this.isEditing = true;
+    this.showActions = false;
+    this.editForm.patchValue({ caption: this.post.caption || '' });
+  }
+
+  cancelEdit(): void {
+    this.isEditing = false;
+    this.errorMessage = null;
+    this.editForm.patchValue({ caption: this.post.caption || '' });
+  }
+
+  saveEdit(): void {
+    if (!this.isOwner || !this.canEdit || this.isSaving) {
+      return;
+    }
+    const caption = (this.editForm.value.caption || '').trim();
+    this.isSaving = true;
+    this.errorMessage = null;
+    this.postService.updatePost(this.post.id, caption).subscribe({
+      next: (updatedPost) => {
+        this.post.caption = updatedPost.caption;
+        this.isSaving = false;
+        this.isEditing = false;
+      },
+      error: (err) => {
+        console.error('Error updating post', err);
+        this.isSaving = false;
+        this.errorMessage = 'Failed to update post. Please try again.';
+      }
+    });
+  }
+
+  openDeleteConfirm(): void {
+    if (!this.isOwner || !this.canDelete) {
+      return;
+    }
+    this.errorMessage = null;
+    this.showActions = false;
+    this.postDialogService.openDelete(this.post.id);
+  }
+
+  closeDeleteConfirm(): void {
+    if (this.isSaving) {
+      return;
+    }
+    this.postDialogService.closeDelete();
+  }
+
+  confirmDelete(): void {
+    if (!this.isOwner || !this.canDelete || this.isSaving) {
+      return;
+    }
+    this.showActions = false;
+    this.isSaving = true;
+    this.errorMessage = null;
+    this.postService.deletePost(this.post.id).subscribe({
+      next: () => {
+        this.isSaving = false;
+        this.postDialogService.closeDelete();
+        this.postDeleted.emit(this.post.id);
+      },
+      error: (err) => {
+        console.error('Error deleting post', err);
+        this.isSaving = false;
+        this.errorMessage = 'Failed to delete post. Please try again.';
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

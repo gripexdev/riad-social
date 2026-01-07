@@ -1,6 +1,8 @@
 package com.instagramclone.backend.profile;
 
+import com.instagramclone.backend.post.CommentResponse;
 import com.instagramclone.backend.post.Post;
+import com.instagramclone.backend.post.PostResponse;
 import com.instagramclone.backend.post.PostService;
 import com.instagramclone.backend.storage.FileSystemStorageService;
 import com.instagramclone.backend.user.User;
@@ -13,6 +15,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
@@ -39,8 +42,12 @@ public class ProfileController {
         if (principal != null) {
             currentUser = userService.findByUsername(principal.getName()).orElse(null);
         }
+        String currentUsername = principal != null ? principal.getName() : "";
+        List<PostResponse> postResponses = posts.stream()
+                .map(post -> convertToPostResponse(post, currentUsername))
+                .collect(Collectors.toList());
 
-        return ResponseEntity.ok(buildProfileResponse(user, posts, currentUser));
+        return ResponseEntity.ok(buildProfileResponse(user, postResponses, currentUser));
     }
 
     @PutMapping("/me")
@@ -70,7 +77,10 @@ public class ProfileController {
 
         User updatedUser = userService.updateProfile(currentUser, bio, profilePictureUrl);
         List<Post> posts = postService.getPostsByUsername(updatedUser.getUsername());
-        return ResponseEntity.ok(buildProfileResponse(updatedUser, posts, updatedUser));
+        List<PostResponse> postResponses = posts.stream()
+                .map(post -> convertToPostResponse(post, updatedUser.getUsername()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(buildProfileResponse(updatedUser, postResponses, updatedUser));
     }
 
     @PostMapping("/{username}/follow")
@@ -87,7 +97,7 @@ public class ProfileController {
         return ResponseEntity.ok().build();
     }
 
-    private ProfileResponse buildProfileResponse(User user, List<Post> posts, User currentUser) {
+    private ProfileResponse buildProfileResponse(User user, List<PostResponse> posts, User currentUser) {
         boolean isFollowing = false;
         if (currentUser != null && !currentUser.getUsername().equals(user.getUsername())) {
             isFollowing = currentUser.getFollowing().contains(user);
@@ -103,6 +113,27 @@ public class ProfileController {
                 user.getFollowing().size(),
                 posts,
                 isFollowing
+        );
+    }
+
+    private PostResponse convertToPostResponse(Post post, String currentUsername) {
+        boolean likedByCurrentUser = post.getLikedBy().stream()
+                .anyMatch(user -> user.getUsername().equals(currentUsername));
+
+        List<CommentResponse> commentResponses = post.getComments().stream()
+                .map(comment -> new CommentResponse(comment.getId(), comment.getContent(), comment.getUser().getUsername(), comment.getCreatedAt()))
+                .collect(Collectors.toList());
+
+        return new PostResponse(
+                post.getId(),
+                post.getImageUrl(),
+                post.getCaption(),
+                post.getUser().getUsername(),
+                post.getUser().getProfilePictureUrl(),
+                post.getCreatedAt(),
+                post.getLikedBy().size(),
+                likedByCurrentUser,
+                commentResponses
         );
     }
 }

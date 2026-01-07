@@ -5,6 +5,8 @@ import com.instagramclone.backend.user.UserService; // Import UserService
 import com.instagramclone.backend.user.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import java.util.List;
 import java.util.Optional;
@@ -81,5 +83,29 @@ public class PostService {
 
         Comment comment = new Comment(content, commenter, post);
         return commentRepository.save(comment);
+    }
+
+    @Transactional
+    public Post updatePostCaption(Long postId, String caption, String username) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found with id: " + postId));
+        if (!post.getUser().getUsername().equals(username)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only edit your own posts.");
+        }
+        if (caption == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Caption is required.");
+        }
+        post.setCaption(caption);
+        return postRepository.save(post);
+    }
+
+    @Transactional
+    public void deletePost(Long postId, String username) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found with id: " + postId));
+        if (!post.getUser().getUsername().equals(username)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own posts.");
+        }
+        postRepository.delete(post);
     }
 }

@@ -26,4 +26,8 @@ export class HomeComponent implements OnInit {
   get currentUsername(): string | null {
     return this.authService.getUsername();
   }
+
+  removePost(postId: number): void {
+    this.posts = this.posts.filter(post => post.id !== postId);
+  }
 }

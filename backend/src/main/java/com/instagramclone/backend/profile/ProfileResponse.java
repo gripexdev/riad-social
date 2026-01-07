@@ -1,6 +1,6 @@
 package com.instagramclone.backend.profile;
 
-import com.instagramclone.backend.post.Post;
+import com.instagramclone.backend.post.PostResponse;
 
 import java.util.List;
 
@@ -12,10 +12,10 @@ public class ProfileResponse {
     private int postCount;
     private int followerCount;
     private int followingCount;
-    private List<Post> posts;
+    private List<PostResponse> posts;
     private boolean isFollowing;
 
-    public ProfileResponse(String username, String fullName, String bio, String profilePictureUrl, int postCount, int followerCount, int followingCount, List<Post> posts, boolean isFollowing) {
+    public ProfileResponse(String username, String fullName, String bio, String profilePictureUrl, int postCount, int followerCount, int followingCount, List<PostResponse> posts, boolean isFollowing) {
         this.username = username;
         this.fullName = fullName;
         this.bio = bio;
@@ -84,11 +84,11 @@ public class ProfileResponse {
         this.followingCount = followingCount;
     }
 
-    public List<Post> getPosts() {
+    public List<PostResponse> getPosts() {
         return posts;
     }
 
-    public void setPosts(List<Post> posts) {
+    public void setPosts(List<PostResponse> posts) {
         this.posts = posts;
     }
 

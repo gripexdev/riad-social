@@ -48,4 +48,12 @@ export class PostService {
     const commentRequest = { content: content };
     return this.http.post<CommentResponse>(`${this.apiUrl}/${postId}/comment`, commentRequest);
   }
+
+  updatePost(postId: number, caption: string): Observable<Post> {
+    return this.http.put<Post>(`${this.apiUrl}/${postId}`, { caption });
+  }
+
+  deletePost(postId: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${postId}`);
+  }
 }
