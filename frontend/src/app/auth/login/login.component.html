@@ -14,6 +14,9 @@
       </div>
       <button class="w-full rounded-full bg-gradient-to-r from-accent to-accent-strong px-5 py-3 text-sm font-semibold text-white shadow-glow transition hover:opacity-90" type="submit" [disabled]="!loginForm.valid">Login</button>
     </form>
+    <div class="mt-4 text-right text-sm">
+      <a class="font-semibold text-accent" routerLink="/forgot-password">Forgot password?</a>
+    </div>
     <div *ngIf="errorMessage" class="mt-4 text-sm text-red-600">
       {{ errorMessage }}
     </div>

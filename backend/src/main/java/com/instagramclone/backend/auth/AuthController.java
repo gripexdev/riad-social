@@ -3,6 +3,8 @@ package com.instagramclone.backend.auth;
 import com.instagramclone.backend.jwt.JwtUtil;
 import com.instagramclone.backend.user.User;
 import com.instagramclone.backend.user.UserService;
+import java.util.Optional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -16,11 +18,20 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
     private final JwtUtil jwtUtil;
+    private final PasswordResetService passwordResetService;
+    private final boolean returnResetToken;
 
-    public AuthController(AuthenticationManager authenticationManager, UserService userService, JwtUtil jwtUtil) {
+    public AuthController(
+            AuthenticationManager authenticationManager,
+            UserService userService,
+            JwtUtil jwtUtil,
+            PasswordResetService passwordResetService,
+            @Value("${password.reset.return-token:false}") boolean returnResetToken) {
         this.authenticationManager = authenticationManager;
         this.userService = userService;
         this.jwtUtil = jwtUtil;
+        this.passwordResetService = passwordResetService;
+        this.returnResetToken = returnResetToken;
     }
 
     @PostMapping("/register")
@@ -57,5 +68,40 @@ public class AuthController {
         final String token = jwtUtil.generateToken(userDetails);
 
         return ResponseEntity.ok(new AuthResponse(token));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        String email = request.getEmail() == null ? "" : request.getEmail().trim();
+        if (email.isEmpty()) {
+            return ResponseEntity.badRequest().body("Email is required");
+        }
+
+        Optional<String> resetToken = passwordResetService.createResetToken(email);
+        String message = "If the email exists, a reset link has been sent.";
+
+        if (returnResetToken && resetToken.isPresent()) {
+            return ResponseEntity.ok(new ForgotPasswordResponse(message, resetToken.get()));
+        }
+
+        return ResponseEntity.ok(new ForgotPasswordResponse(message, null));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
+        String token = request.getToken() == null ? "" : request.getToken().trim();
+        if (token.isEmpty()) {
+            return ResponseEntity.badRequest().body("Reset token is required");
+        }
+        if (request.getNewPassword() == null || request.getNewPassword().length() < 6) {
+            return ResponseEntity.badRequest().body("Password must be at least 6 characters");
+        }
+
+        try {
+            passwordResetService.resetPassword(token, request.getNewPassword());
+            return ResponseEntity.ok(new ResetPasswordResponse("Password updated"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }

@@ -40,6 +40,11 @@ public class UserService implements UserDetailsService {
         return userRepository.save(user);
     }
 
+    public User updatePassword(User user, String newPassword) {
+        user.setPassword(passwordEncoder.encode(newPassword));
+        return userRepository.save(user);
+    }
+
     public Optional<User> findByUsername(String username) {
         return userRepository.findByUsername(username);
     }
