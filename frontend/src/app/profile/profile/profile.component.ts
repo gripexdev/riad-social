@@ -148,10 +148,12 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   get displayAvatarUrl(): string {
-    if (this.avatarPreviewUrl) {
-      return this.avatarPreviewUrl;
-    }
-    return this.profile?.profilePictureUrl || 'https://via.placeholder.com/150';
+    return this.avatarPreviewUrl || this.profile?.profilePictureUrl || '';
+  }
+
+  get profileInitial(): string {
+    const username = this.profile?.username || '';
+    return username ? username[0].toUpperCase() : '?';
   }
 
   formatFileSize(bytes: number): string {

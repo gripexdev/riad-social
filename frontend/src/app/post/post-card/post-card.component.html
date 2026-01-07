@@ -1,6 +1,9 @@
 <article class="rounded-3xl border border-line bg-white/90 shadow-soft">
   <header class="relative flex items-center gap-3 px-5 pt-5 pb-3">
-    <div class="h-11 w-11 rounded-full bg-cover bg-center" [style.backgroundImage]="'url(' + (post.profilePictureUrl || 'https://via.placeholder.com/150') + ')'"></div>
+    <div class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-accent to-accent-strong text-sm font-semibold text-white shadow-glow">
+      <img *ngIf="post.profilePictureUrl; else postInitial" class="h-full w-full object-cover" [src]="post.profilePictureUrl" [alt]="post.username + ' avatar'">
+      <ng-template #postInitial>{{ post.username[0] | uppercase }}</ng-template>
+    </div>
     <div class="flex flex-col">
       <a class="text-sm font-semibold text-ink" [routerLink]="['/users', post.username]">{{ post.username }}</a>
       <span class="text-xs uppercase tracking-[0.12em] text-muted">{{ post.createdAt | date:'medium' }}</span>

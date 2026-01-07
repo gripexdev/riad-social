@@ -14,8 +14,9 @@
       </div>
       <div *ngIf="currentUsername as username" class="rounded-3xl border border-line bg-white/90 p-6 shadow-soft lg:hidden">
         <div class="flex items-center gap-4">
-          <div class="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent-strong text-lg font-semibold text-white shadow-glow">
-            {{ username[0] | uppercase }}
+          <div class="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-accent to-accent-strong text-lg font-semibold text-white shadow-glow">
+            <img *ngIf="currentUserProfilePictureUrl; else mobileInitial" class="h-full w-full object-cover" [src]="currentUserProfilePictureUrl" [alt]="username + ' avatar'">
+            <ng-template #mobileInitial>{{ username[0] | uppercase }}</ng-template>
           </div>
           <div>
             <div class="text-sm font-semibold text-ink">{{ username }}</div>
@@ -42,8 +43,9 @@
     <aside class="sticky top-24 hidden h-fit flex-col gap-6 lg:flex">
       <div *ngIf="currentUsername as username" class="rounded-3xl border border-line bg-white/90 p-6 shadow-soft">
         <div class="flex items-center gap-4">
-          <div class="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent-strong text-lg font-semibold text-white shadow-glow">
-            {{ username[0] | uppercase }}
+          <div class="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-accent to-accent-strong text-lg font-semibold text-white shadow-glow">
+            <img *ngIf="currentUserProfilePictureUrl; else desktopInitial" class="h-full w-full object-cover" [src]="currentUserProfilePictureUrl" [alt]="username + ' avatar'">
+            <ng-template #desktopInitial>{{ username[0] | uppercase }}</ng-template>
           </div>
           <div>
             <div class="text-sm font-semibold text-ink">{{ username }}</div>
