@@ -3,7 +3,10 @@ package com.instagramclone.backend.auth;
 import com.instagramclone.backend.jwt.JwtUtil;
 import com.instagramclone.backend.user.User;
 import com.instagramclone.backend.user.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,10 +18,14 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/auth")
 public class AuthController {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
+
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
     private final JwtUtil jwtUtil;
     private final PasswordResetService passwordResetService;
+    private final PasswordResetEmailService passwordResetEmailService;
+    private final PasswordResetRateLimiter passwordResetRateLimiter;
     private final boolean returnResetToken;
 
     public AuthController(
@@ -26,11 +33,15 @@ public class AuthController {
             UserService userService,
             JwtUtil jwtUtil,
             PasswordResetService passwordResetService,
+            PasswordResetEmailService passwordResetEmailService,
+            PasswordResetRateLimiter passwordResetRateLimiter,
             @Value("${password.reset.return-token:false}") boolean returnResetToken) {
         this.authenticationManager = authenticationManager;
         this.userService = userService;
         this.jwtUtil = jwtUtil;
         this.passwordResetService = passwordResetService;
+        this.passwordResetEmailService = passwordResetEmailService;
+        this.passwordResetRateLimiter = passwordResetRateLimiter;
         this.returnResetToken = returnResetToken;
     }
 
@@ -71,17 +82,31 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+    public ResponseEntity<?> forgotPassword(
+            @RequestBody ForgotPasswordRequest request,
+            HttpServletRequest httpServletRequest) {
         String email = request.getEmail() == null ? "" : request.getEmail().trim();
-        if (email.isEmpty()) {
-            return ResponseEntity.badRequest().body("Email is required");
-        }
-
-        Optional<String> resetToken = passwordResetService.createResetToken(email);
+        String normalizedEmail = email.toLowerCase();
         String message = "If the email exists, a reset link has been sent.";
 
-        if (returnResetToken && resetToken.isPresent()) {
-            return ResponseEntity.ok(new ForgotPasswordResponse(message, resetToken.get()));
+        String clientIp = passwordResetRateLimiter.resolveClientIp(httpServletRequest);
+        if (!passwordResetRateLimiter.isAllowed(clientIp, normalizedEmail)) {
+            return ResponseEntity.ok(new ForgotPasswordResponse(message, null));
+        }
+
+        if (!normalizedEmail.isEmpty()) {
+            Optional<String> resetToken = passwordResetService.createResetToken(normalizedEmail);
+            resetToken.ifPresent(token -> {
+                try {
+                    passwordResetEmailService.sendResetEmail(normalizedEmail, token);
+                } catch (Exception e) {
+                    log.warn("Failed to send password reset email for {}", normalizedEmail, e);
+                }
+            });
+
+            if (returnResetToken && resetToken.isPresent()) {
+                return ResponseEntity.ok(new ForgotPasswordResponse(message, resetToken.get()));
+            }
         }
 
         return ResponseEntity.ok(new ForgotPasswordResponse(message, null));

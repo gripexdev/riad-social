@@ -19,7 +19,6 @@ export class ForgotPasswordComponent {
   forgotForm: FormGroup;
   errorMessage: string | null = null;
   successMessage: string | null = null;
-  resetToken: string | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -34,13 +33,11 @@ export class ForgotPasswordComponent {
     if (this.forgotForm.valid) {
       this.errorMessage = null;
       this.successMessage = null;
-      this.resetToken = null;
 
       const email = this.forgotForm.value.email;
       this.authService.forgotPassword(email).subscribe({
         next: (response) => {
           this.successMessage = response.message;
-          this.resetToken = response.resetToken ?? null;
         },
         error: (error) => {
           this.errorMessage = 'Failed to request password reset. Please try again.';

@@ -20,6 +20,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/instagram_clone_db
       SPRING_DATASOURCE_USERNAME: admin
       SPRING_DATASOURCE_PASSWORD: password
+      BREVO_SMTP_USERNAME: ${BREVO_SMTP_USERNAME}
+      BREVO_SMTP_PASSWORD: ${BREVO_SMTP_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
     volumes:
       - uploads_data:/app/uploads
   frontend:
