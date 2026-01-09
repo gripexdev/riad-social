@@ -3,6 +3,7 @@
     <a class="brand text-3xl text-ink" routerLink="/home">Riad</a>
     <nav class="flex flex-wrap items-center gap-2 text-xs font-semibold sm:text-sm">
       <a class="rounded-full px-4 py-2 text-muted transition hover:bg-sand hover:text-ink" routerLink="/home">Home</a>
+      <a class="rounded-full px-4 py-2 text-muted transition hover:bg-sand hover:text-ink" *ngIf="authService.isAuthenticated()" routerLink="/search">Search</a>
       <a class="rounded-full bg-gradient-to-r from-accent to-accent-strong px-4 py-2 text-white shadow-glow transition hover:opacity-90" *ngIf="authService.isAuthenticated()" routerLink="/create-post">Create</a>
       <a class="rounded-full px-4 py-2 text-muted transition hover:bg-sand hover:text-ink" *ngIf="!authService.isAuthenticated()" routerLink="/login">Login</a>
       <a class="rounded-full px-4 py-2 text-muted transition hover:bg-sand hover:text-ink" *ngIf="!authService.isAuthenticated()" routerLink="/register">Register</a>

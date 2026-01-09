@@ -6,6 +6,7 @@ import com.instagramclone.backend.post.PostResponse;
 import com.instagramclone.backend.post.PostService;
 import com.instagramclone.backend.storage.FileSystemStorageService;
 import com.instagramclone.backend.user.User;
+import com.instagramclone.backend.user.UserSearchResponse;
 import com.instagramclone.backend.user.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -15,6 +16,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -95,6 +97,40 @@ public class ProfileController {
         String currentUsername = principal.getName();
         userService.unfollowUser(currentUsername, username);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<UserSearchResponse>> searchUsers(
+            @RequestParam(name = "q", required = false) String query,
+            @RequestParam(name = "limit", defaultValue = "20") int limit,
+            Principal principal) {
+        String normalizedQuery = query == null ? "" : query.trim();
+        if (normalizedQuery.length() < 2) {
+            return ResponseEntity.ok(List.of());
+        }
+
+        final String currentUsername = principal != null ? principal.getName() : null;
+        final User currentUser = currentUsername == null
+                ? null
+                : userService.findByUsername(currentUsername).orElse(null);
+        final Set<String> followingUsernames = currentUser == null
+                ? Set.of()
+                : currentUser.getFollowing().stream()
+                    .map(User::getUsername)
+                    .collect(Collectors.toSet());
+
+        // Provide a lightweight search response tailored for discovery.
+        List<UserSearchResponse> results = userService.searchUsers(normalizedQuery, limit).stream()
+                .filter(user -> currentUsername == null || !user.getUsername().equals(currentUsername))
+                .map(user -> new UserSearchResponse(
+                        user.getUsername(),
+                        user.getFullName(),
+                        user.getProfilePictureUrl(),
+                        followingUsernames.contains(user.getUsername())
+                ))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(results);
     }
 
     private ProfileResponse buildProfileResponse(User user, List<PostResponse> posts, User currentUser) {

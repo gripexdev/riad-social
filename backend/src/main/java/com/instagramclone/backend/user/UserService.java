@@ -7,7 +7,10 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 @Service
 public class UserService implements UserDetailsService {
@@ -57,6 +60,19 @@ public class UserService implements UserDetailsService {
             user.setProfilePictureUrl(profilePictureUrl);
         }
         return userRepository.save(user);
+    }
+
+    public List<User> searchUsers(String query, int limit) {
+        String trimmedQuery = query == null ? "" : query.trim();
+        if (trimmedQuery.isEmpty()) {
+            return List.of();
+        }
+        // Cap the limit and keep results ordered for a stable UX.
+        int safeLimit = Math.max(1, Math.min(limit, 50));
+        PageRequest pageRequest = PageRequest.of(0, safeLimit, Sort.by("username").ascending());
+        return userRepository
+                .findByUsernameContainingIgnoreCaseOrFullNameContainingIgnoreCase(trimmedQuery, trimmedQuery, pageRequest)
+                .getContent();
     }
 
     public void followUser(String followerUsername, String followingUsername) {

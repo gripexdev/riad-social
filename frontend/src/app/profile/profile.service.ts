@@ -15,6 +15,13 @@ export interface Profile {
   isFollowing: boolean;
 }
 
+export interface UserSearchResult {
+  username: string;
+  fullName: string;
+  profilePictureUrl: string;
+  isFollowing: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -45,5 +52,15 @@ export class ProfileService {
       formData.append('avatar', avatar);
     }
     return this.http.put<Profile>(`${this.apiUrl}/me`, formData);
+  }
+
+  // Search users by username or full name for discovery.
+  searchUsers(query: string, limit: number = 20): Observable<UserSearchResult[]> {
+    return this.http.get<UserSearchResult[]>(`${this.apiUrl}/search`, {
+      params: {
+        q: query,
+        limit
+      }
+    });
   }
 }
