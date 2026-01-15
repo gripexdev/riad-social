@@ -11,12 +11,12 @@ import { ProfileComponent } from './profile/profile/profile.component';
 
 export const routes: Routes = [
     { path: '', redirectTo: '/home', pathMatch: 'full' },
-    { path: 'home', component: HomeComponent },
+    { path: 'home', component: HomeComponent, canActivate: [authGuard] },
     { path: 'login', component: LoginComponent },
     { path: 'register', component: RegisterComponent },
     { path: 'forgot-password', component: ForgotPasswordComponent },
     { path: 'reset-password', component: ResetPasswordComponent },
     { path: 'search', component: UserSearchComponent, canActivate: [authGuard] },
-    { path: 'create-post', component: CreatePostComponent },
-    { path: 'users/:username', component: ProfileComponent }
+    { path: 'create-post', component: CreatePostComponent, canActivate: [authGuard] },
+    { path: 'users/:username', component: ProfileComponent, canActivate: [authGuard] }
 ];
