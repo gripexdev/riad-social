@@ -25,7 +25,7 @@ jobs:
       - name: Make mvnw executable
         run: chmod +x mvnw
       - name: Test + SonarCloud
-        run: ./mvnw -B -ntp verify sonar:sonar -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY_BACKEND }} -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} -Dsonar.host.url=https://sonarcloud.io -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+        run: ./mvnw -B -ntp verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY_BACKEND }} -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} -Dsonar.host.url=https://sonarcloud.io -Dsonar.token=${{ secrets.SONAR_TOKEN }}
 
   frontend:
     runs-on: ubuntu-latest
