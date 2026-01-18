@@ -1,5 +1,6 @@
 package com.instagramclone.backend.user;
 
+import com.instagramclone.backend.notification.NotificationService;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -17,10 +18,12 @@ public class UserService implements UserDetailsService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final NotificationService notificationService;
 
-    public UserService(UserRepository userRepository, @Lazy PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, @Lazy PasswordEncoder passwordEncoder, NotificationService notificationService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -86,6 +89,7 @@ public class UserService implements UserDetailsService {
             following.getFollowers().add(follower);
             userRepository.save(follower);
             userRepository.save(following);
+            notificationService.createFollowNotification(follower, following);
         }
     }
 

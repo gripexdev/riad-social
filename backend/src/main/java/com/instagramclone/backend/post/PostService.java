@@ -1,5 +1,6 @@
 package com.instagramclone.backend.post;
 
+import com.instagramclone.backend.notification.NotificationService;
 import com.instagramclone.backend.user.User;
 import com.instagramclone.backend.user.UserService; // Import UserService
 import com.instagramclone.backend.user.UserRepository;
@@ -11,7 +12,6 @@ import org.springframework.http.HttpStatus;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 public class PostService {
@@ -20,12 +20,14 @@ public class PostService {
     private final UserRepository userRepository; // Keep UserRepository for other user lookups
     private final UserService userService; // Inject UserService
     private final CommentRepository commentRepository;
+    private final NotificationService notificationService;
 
-    public PostService(PostRepository postRepository, UserRepository userRepository, UserService userService, CommentRepository commentRepository) {
+    public PostService(PostRepository postRepository, UserRepository userRepository, UserService userService, CommentRepository commentRepository, NotificationService notificationService) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.userService = userService;
         this.commentRepository = commentRepository;
+        this.notificationService = notificationService;
     }
 
     public Post createPost(String imageUrl, String caption, String username) {
@@ -66,10 +68,12 @@ public class PostService {
         User liker = userRepository.findByUsername(likerUsername)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with username: " + likerUsername));
 
-        if (post.getLikedBy().contains(liker)) {
+        boolean alreadyLiked = post.getLikedBy().contains(liker);
+        if (alreadyLiked) {
             post.getLikedBy().remove(liker);
         } else {
             post.getLikedBy().add(liker);
+            notificationService.createLikeNotification(liker, post);
         }
         post.setLikes(post.getLikedBy().size());
         return postRepository.save(post);
@@ -82,7 +86,9 @@ public class PostService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found with username: " + commenterUsername));
 
         Comment comment = new Comment(content, commenter, post);
-        return commentRepository.save(comment);
+        Comment savedComment = commentRepository.save(comment);
+        notificationService.createCommentNotification(commenter, post, savedComment);
+        return savedComment;
     }
 
     @Transactional
