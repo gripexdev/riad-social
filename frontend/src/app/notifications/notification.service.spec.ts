@@ -56,4 +56,14 @@ describe('NotificationService', () => {
     expect(req.request.method).toBe('PUT');
     req.flush({});
   });
+
+  it('should mark a single notification read', () => {
+    service.markRead(5).subscribe(() => {
+      expect(true).toBeTrue();
+    });
+
+    const req = httpMock.expectOne('http://localhost:8080/api/notifications/5/read');
+    expect(req.request.method).toBe('PUT');
+    req.flush({});
+  });
 });

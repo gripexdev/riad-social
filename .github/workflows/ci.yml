@@ -65,6 +65,7 @@ jobs:
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
             -Dsonar.sources=src
             -Dsonar.exclusions=**/*.spec.ts
+            -Dsonar.coverage.exclusions=src/test.ts
             -Dsonar.javascript.lcov.reportPaths=coverage/frontend/lcov.info
             -Dsonar.typescript.lcov.reportPaths=coverage/frontend/lcov.info
       - name: SonarCloud Quality Gate

@@ -74,8 +74,8 @@
     </form>
   </section>
 
-  <div *ngIf="showDeleteConfirm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6 backdrop-blur-sm" (click)="closeDeleteConfirm()">
-    <div class="w-full max-w-sm rounded-3xl border border-line bg-white p-6 shadow-soft" (click)="$event.stopPropagation()">
+  <div *ngIf="showDeleteConfirm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6 backdrop-blur-sm" role="button" tabindex="0" aria-label="Close delete confirmation" (click)="closeDeleteConfirm()" (keydown.enter)="closeDeleteConfirm()" (keydown.space)="closeDeleteConfirm()">
+    <div class="w-full max-w-sm rounded-3xl border border-line bg-white p-6 shadow-soft" role="dialog" aria-modal="true" tabindex="0" (click)="$event.stopPropagation()" (keydown.escape)="closeDeleteConfirm()" (keydown)="$event.stopPropagation()">
       <div class="flex items-start gap-4">
         <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
           <span class="material-icons">delete_forever</span>

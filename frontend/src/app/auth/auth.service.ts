@@ -70,8 +70,8 @@ export class AuthService {
       try {
         const decodedToken: any = jwtDecode(token);
         return decodedToken.sub; // 'sub' is the standard claim for subject (username)
-      } catch (Error) {
-        console.error('Error decoding JWT token:', Error);
+      } catch (error) {
+        console.error('Error decoding JWT token:', error);
         return null;
       }
     }
