@@ -34,7 +34,22 @@
           </a>
         </div>
       </div>
-      <div class="space-y-6">
+      <div *ngIf="posts.length === 0" class="rounded-3xl border border-line bg-white/90 p-6 shadow-soft">
+        <div class="text-xs uppercase tracking-[0.2em] text-muted">Your feed</div>
+        <h3 class="mt-2 text-lg font-semibold text-ink">No posts yet</h3>
+        <p class="mt-2 text-sm text-muted">Follow creators or check out Explore to discover fresh content.</p>
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+          <a class="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-accent to-accent-strong px-4 py-2 text-xs font-semibold text-white shadow-glow transition hover:opacity-90" routerLink="/explore">
+            <span class="material-icons text-base">explore</span>
+            Explore posts
+          </a>
+          <a class="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-xs font-semibold text-ink transition hover:border-ink/40 hover:text-ink" routerLink="/search">
+            <span class="material-icons text-base">search</span>
+            Find people
+          </a>
+        </div>
+      </div>
+      <div *ngIf="posts.length > 0" class="space-y-6">
         <div *ngFor="let post of posts" class="fade-up">
           <app-post-card [post]="post" [canDelete]="true" (postDeleted)="removePost($event)"></app-post-card>
         </div>

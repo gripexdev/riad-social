@@ -57,6 +57,16 @@ public class PostController {
         return ResponseEntity.ok(postResponses);
     }
 
+    @GetMapping("/posts/explore")
+    public ResponseEntity<List<PostResponse>> getExplorePosts(Principal principal) {
+        String currentUsername = principal.getName();
+        List<Post> posts = postService.getExplorePosts();
+        List<PostResponse> postResponses = posts.stream()
+                .map(post -> convertToPostResponse(post, currentUsername))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(postResponses);
+    }
+
     @GetMapping("/users/{username}/posts")
     public ResponseEntity<List<PostResponse>> getPostsByUser(@PathVariable String username, Principal principal) {
         String currentUsername = principal.getName();

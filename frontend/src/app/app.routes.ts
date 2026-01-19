@@ -8,10 +8,12 @@ import { authGuard } from './auth/auth.guard';
 import { UserSearchComponent } from './search/user-search.component';
 import { CreatePostComponent } from './post/create-post/create-post.component';
 import { ProfileComponent } from './profile/profile/profile.component';
+import { ExploreComponent } from './explore/explore.component';
 
 export const routes: Routes = [
     { path: '', redirectTo: '/home', pathMatch: 'full' },
     { path: 'home', component: HomeComponent, canActivate: [authGuard] },
+    { path: 'explore', component: ExploreComponent, canActivate: [authGuard] },
     { path: 'login', component: LoginComponent },
     { path: 'register', component: RegisterComponent },
     { path: 'forgot-password', component: ForgotPasswordComponent },

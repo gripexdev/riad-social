@@ -1,0 +1,54 @@
+<div class="mx-auto w-full max-w-6xl">
+  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <section class="space-y-6">
+      <div class="rounded-3xl border border-line bg-white/90 p-6 shadow-soft">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div class="text-xs uppercase tracking-[0.2em] text-muted">Global feed</div>
+            <h2 class="text-2xl font-semibold text-ink">Explore</h2>
+            <p class="text-sm text-muted">Fresh posts from across the community.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <a class="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-xs font-semibold text-ink transition hover:border-ink/40 hover:text-ink" routerLink="/search">
+              <span class="material-icons text-base">search</span>
+              Find people
+            </a>
+            <a class="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-accent to-accent-strong px-4 py-2 text-xs font-semibold text-white shadow-glow transition hover:opacity-90" routerLink="/create-post">
+              <span class="material-icons text-base">add_box</span>
+              Share a post
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="posts.length === 0" class="rounded-3xl border border-line bg-white/90 p-6 shadow-soft">
+        <div class="text-xs uppercase tracking-[0.2em] text-muted">No posts yet</div>
+        <h3 class="mt-2 text-lg font-semibold text-ink">Be the first to share</h3>
+        <p class="mt-2 text-sm text-muted">Your global feed will fill up once people start posting.</p>
+        <a class="mt-4 inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:border-ink/40 hover:text-ink" routerLink="/create-post">
+          Create a post
+        </a>
+      </div>
+
+      <div class="space-y-6">
+        <div *ngFor="let post of posts" class="fade-up">
+          <app-post-card [post]="post"></app-post-card>
+        </div>
+      </div>
+    </section>
+    <aside class="sticky top-24 hidden h-fit flex-col gap-6 lg:flex">
+      <div class="rounded-3xl border border-line bg-white/90 p-6 shadow-soft">
+        <div class="text-xs uppercase tracking-[0.2em] text-muted">Discover</div>
+        <h3 class="mt-2 text-lg font-semibold text-ink">Follow new creators</h3>
+        <p class="mt-2 text-sm text-muted">Search for photographers, artists, and friends to build your feed.</p>
+        <a class="mt-4 inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:border-ink/40 hover:text-ink" routerLink="/search">
+          Find people
+        </a>
+      </div>
+      <div class="rounded-3xl border border-line bg-white/90 p-6 shadow-soft">
+        <div class="text-xs uppercase tracking-[0.2em] text-muted">Post</div>
+        <p class="mt-2 text-sm text-muted">Share your latest shot to appear in Explore.</p>
+      </div>
+    </aside>
+  </div>
+</div>

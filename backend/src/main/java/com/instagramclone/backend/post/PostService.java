@@ -52,6 +52,9 @@ public class PostService {
         return postRepository.findByUserInOrderByCreatedAtDesc(followedUsers);
     }
 
+    public List<Post> getExplorePosts() {
+        return postRepository.findAllByOrderByCreatedAtDesc();
+    }
 
     public Optional<Post> getPostById(Long id) {
         return postRepository.findById(id);
