@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -42,6 +43,14 @@ class NotificationServiceTest {
         User user = buildUser("sam");
 
         notificationService.createFollowNotification(user, user);
+
+        verify(notificationRepository, never()).save(any(Notification.class));
+    }
+
+    @Test
+    void createFollowNotification_skipsWhenMissingUsers() {
+        notificationService.createFollowNotification(null, buildUser("bob"));
+        notificationService.createFollowNotification(buildUser("alice"), null);
 
         verify(notificationRepository, never()).save(any(Notification.class));
     }
@@ -79,6 +88,22 @@ class NotificationServiceTest {
     }
 
     @Test
+    void createLikeNotification_skipsMissingOrSelf() {
+        User actor = buildUser("alice");
+        User recipient = buildUser("bob");
+        Post post = new Post("image-url", "caption", recipient);
+
+        notificationService.createLikeNotification(null, post);
+        notificationService.createLikeNotification(actor, null);
+
+        User sameUser = buildUser("same");
+        Post selfPost = new Post("image-url", "caption", sameUser);
+        notificationService.createLikeNotification(sameUser, selfPost);
+
+        verify(notificationRepository, never()).save(any(Notification.class));
+    }
+
+    @Test
     void createCommentNotification_trimsAndShortensPreview() {
         User actor = buildUser("alice");
         User recipient = buildUser("bob");
@@ -92,6 +117,56 @@ class NotificationServiceTest {
         verify(notificationRepository).save(captor.capture());
         Notification saved = captor.getValue();
         assertEquals("hello world", saved.getCommentPreview());
+    }
+
+    @Test
+    void createCommentNotification_handlesNullContent() {
+        User actor = buildUser("alice");
+        User recipient = buildUser("bob");
+        Post post = new Post("image-url", "caption", recipient);
+        Comment comment = new Comment(null, actor, post);
+
+        notificationService.createCommentNotification(actor, post, comment);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(captor.capture());
+        Notification saved = captor.getValue();
+        assertNull(saved.getCommentPreview());
+    }
+
+    @Test
+    void createCommentNotification_truncatesLongPreview() {
+        User actor = buildUser("alice");
+        User recipient = buildUser("bob");
+        Post post = new Post("image-url", "caption", recipient);
+        String longContent = "a".repeat(130);
+        Comment comment = new Comment(longContent, actor, post);
+
+        notificationService.createCommentNotification(actor, post, comment);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(captor.capture());
+        Notification saved = captor.getValue();
+        assertTrue(saved.getCommentPreview().endsWith("..."));
+    }
+
+    @Test
+    void createCommentNotification_skipsMissingOrSelf() {
+        User actor = buildUser("alice");
+        User recipient = buildUser("bob");
+        Post post = new Post("image-url", "caption", recipient);
+        Comment comment = new Comment("content", actor, post);
+
+        notificationService.createCommentNotification(null, post, comment);
+        notificationService.createCommentNotification(actor, null, comment);
+        notificationService.createCommentNotification(actor, post, null);
+
+        User sameUser = buildUser("same");
+        Post selfPost = new Post("image-url", "caption", sameUser);
+        Comment selfComment = new Comment("content", sameUser, selfPost);
+        notificationService.createCommentNotification(sameUser, selfPost, selfComment);
+
+        verify(notificationRepository, never()).save(any(Notification.class));
     }
 
     @Test
