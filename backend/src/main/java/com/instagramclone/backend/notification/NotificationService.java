@@ -7,6 +7,8 @@ import com.instagramclone.backend.user.UserRepository;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,7 @@ public class NotificationService {
         this.userRepository = userRepository;
     }
 
+    @CacheEvict(cacheNames = "notificationUnreadCount", key = "#recipient.username", condition = "#recipient != null")
     public void createFollowNotification(User actor, User recipient) {
         if (actor == null || recipient == null) {
             return;
@@ -35,6 +38,11 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
+    @CacheEvict(
+            cacheNames = "notificationUnreadCount",
+            key = "#post.user.username",
+            condition = "#post != null && #post.user != null"
+    )
     public void createLikeNotification(User actor, Post post) {
         if (actor == null || post == null || post.getUser() == null) {
             return;
@@ -49,6 +57,11 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
+    @CacheEvict(
+            cacheNames = "notificationUnreadCount",
+            key = "#post.user.username",
+            condition = "#post != null && #post.user != null"
+    )
     public void createCommentNotification(User actor, Post post, Comment comment) {
         if (actor == null || post == null || post.getUser() == null || comment == null) {
             return;
@@ -77,6 +90,7 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "notificationUnreadCount", key = "#username", condition = "#username != null")
     public long getUnreadCount(String username) {
         User recipient = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
@@ -84,6 +98,7 @@ public class NotificationService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "notificationUnreadCount", key = "#username", condition = "#username != null")
     public void markAllRead(String username) {
         User recipient = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
@@ -91,6 +106,7 @@ public class NotificationService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "notificationUnreadCount", key = "#username", condition = "#username != null")
     public void markRead(String username, Long notificationId) {
         User recipient = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
