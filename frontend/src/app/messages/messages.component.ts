@@ -6,6 +6,7 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { AuthService } from '../auth/auth.service';
 import { Conversation, Message, MessageService } from './message.service';
+import { MessageRealtimeService } from './message-realtime.service';
 
 @Component({
   selector: 'app-messages',
@@ -28,12 +29,14 @@ export class MessagesComponent implements OnInit, OnDestroy {
   recipientControl: FormControl<string>;
   messageControl: FormControl<string>;
   readonly maxMessageLength = 2000;
+  readonly previewLimit = 120;
   private readonly destroy$ = new Subject<void>();
 
   @ViewChild('messageScroll') messageScroll?: ElementRef<HTMLDivElement>;
 
   constructor(
     private messageService: MessageService,
+    private messageRealtimeService: MessageRealtimeService,
     private authService: AuthService,
     private route: ActivatedRoute,
     private router: Router,
@@ -53,6 +56,12 @@ export class MessagesComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadConversations();
+    this.messageRealtimeService.connect();
+    this.messageRealtimeService.onMessage()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(message => {
+        this.handleIncomingMessage(message);
+      });
     this.route.paramMap.pipe(takeUntil(this.destroy$)).subscribe(params => {
       const rawId = params.get('conversationId');
       const parsedId = rawId ? Number(rawId) : Number.NaN;
@@ -265,7 +274,57 @@ export class MessagesComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.messageRealtimeService.disconnect();
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private handleIncomingMessage(message: Message): void {
+    const isInActiveConversation = this.selectedConversationId === message.conversationId;
+    if (isInActiveConversation) {
+      this.appendMessageIfMissing(message);
+      this.scrollToBottom();
+      if (!this.isOutgoing(message)) {
+        this.markConversationRead(message.conversationId);
+      }
+    }
+    this.updateConversationPreview(message);
+  }
+
+  private appendMessageIfMissing(message: Message): void {
+    if (this.messages.some(existing => existing.id === message.id)) {
+      return;
+    }
+    this.messages = [...this.messages, message];
+  }
+
+  private updateConversationPreview(message: Message): void {
+    const conversation = this.conversations.find(item => item.id === message.conversationId);
+    if (!conversation) {
+      this.loadConversations();
+      return;
+    }
+    const isOutgoing = this.isOutgoing(message);
+    conversation.lastMessagePreview = this.buildPreview(message.content);
+    conversation.lastMessageAt = message.createdAt;
+    conversation.lastMessageSenderUsername = message.senderUsername;
+    if (!isOutgoing && this.selectedConversationId !== message.conversationId) {
+      conversation.unreadCount = (conversation.unreadCount || 0) + 1;
+    } else if (this.selectedConversationId === message.conversationId) {
+      conversation.unreadCount = 0;
+    }
+    this.conversations = [
+      conversation,
+      ...this.conversations.filter(item => item.id !== conversation.id)
+    ];
+    this.syncSelectedConversation();
+  }
+
+  private buildPreview(content: string): string {
+    const normalized = content.trim().replace(/\s+/g, ' ');
+    if (normalized.length <= this.previewLimit) {
+      return normalized;
+    }
+    return `${normalized.substring(0, this.previewLimit).trim()}...`;
   }
 }

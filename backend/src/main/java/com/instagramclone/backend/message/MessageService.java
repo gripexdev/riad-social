@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -20,15 +21,18 @@ public class MessageService {
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public MessageService(
             ConversationRepository conversationRepository,
             MessageRepository messageRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            SimpMessagingTemplate messagingTemplate
     ) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @Transactional(readOnly = true)
@@ -83,7 +87,10 @@ public class MessageService {
         conversation.setLastMessageSender(sender);
         conversationRepository.save(conversation);
 
-        return toMessageResponse(savedMessage);
+        MessageResponse response = toMessageResponse(savedMessage);
+        messagingTemplate.convertAndSendToUser(recipient.getUsername(), "/queue/messages", response);
+        messagingTemplate.convertAndSendToUser(sender.getUsername(), "/queue/messages", response);
+        return response;
     }
 
     @Transactional
