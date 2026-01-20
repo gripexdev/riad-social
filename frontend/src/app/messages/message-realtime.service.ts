@@ -1,6 +1,5 @@
 import { Injectable, NgZone } from '@angular/core';
 import { Client, IMessage } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
 import { Subject, Observable } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 import { Message } from './message.service';
@@ -11,6 +10,7 @@ import { Message } from './message.service';
 export class MessageRealtimeService {
   private client: Client | null = null;
   private readonly messageSubject = new Subject<Message>();
+  private readonly socketUrl = 'ws://localhost:8080/ws';
 
   constructor(
     private authService: AuthService,
@@ -27,7 +27,7 @@ export class MessageRealtimeService {
     }
 
     this.client = new Client({
-      webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
+      brokerURL: this.socketUrl,
       connectHeaders: {
         Authorization: `Bearer ${token}`
       },
