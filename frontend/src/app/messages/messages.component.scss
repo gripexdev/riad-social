@@ -1,0 +1,9 @@
+.message-scroll {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-scroll {
+    scroll-behavior: auto;
+  }
+}

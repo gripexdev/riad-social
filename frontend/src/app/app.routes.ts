@@ -9,6 +9,7 @@ import { UserSearchComponent } from './search/user-search.component';
 import { CreatePostComponent } from './post/create-post/create-post.component';
 import { ProfileComponent } from './profile/profile/profile.component';
 import { ExploreComponent } from './explore/explore.component';
+import { MessagesComponent } from './messages/messages.component';
 
 export const routes: Routes = [
     { path: '', redirectTo: '/home', pathMatch: 'full' },
@@ -19,6 +20,8 @@ export const routes: Routes = [
     { path: 'forgot-password', component: ForgotPasswordComponent },
     { path: 'reset-password', component: ResetPasswordComponent },
     { path: 'search', component: UserSearchComponent, canActivate: [authGuard] },
+    { path: 'messages', component: MessagesComponent, canActivate: [authGuard] },
+    { path: 'messages/:conversationId', component: MessagesComponent, canActivate: [authGuard] },
     { path: 'create-post', component: CreatePostComponent, canActivate: [authGuard] },
     { path: 'users/:username', component: ProfileComponent, canActivate: [authGuard] }
 ];
