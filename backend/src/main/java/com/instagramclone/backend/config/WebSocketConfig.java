@@ -36,7 +36,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         frontendBaseUrl,
                         "http://localhost:*",
                         "http://127.0.0.1:*"
-                );
+                )
+                .withSockJS();
     }
 
     @Override
