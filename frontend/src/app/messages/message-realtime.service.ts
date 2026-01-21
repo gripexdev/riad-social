@@ -29,7 +29,8 @@ export class MessageRealtimeService {
     this.client = new Client({
       brokerURL: this.socketUrl,
       connectHeaders: {
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
+        token
       },
       reconnectDelay: 5000,
       heartbeatIncoming: 10000,
@@ -48,6 +49,9 @@ export class MessageRealtimeService {
 
     this.client.onWebSocketError = (event) => {
       console.error('WebSocket error', event);
+    };
+    this.client.onWebSocketClose = (event) => {
+      console.warn('WebSocket closed', event);
     };
 
     this.client.activate();
