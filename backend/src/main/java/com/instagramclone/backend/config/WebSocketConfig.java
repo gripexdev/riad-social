@@ -13,12 +13,15 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthChannelInterceptor authChannelInterceptor;
+    private final WebSocketHandshakeHandler webSocketHandshakeHandler;
     private final String frontendBaseUrl;
 
     public WebSocketConfig(
             WebSocketAuthChannelInterceptor authChannelInterceptor,
+            WebSocketHandshakeHandler webSocketHandshakeHandler,
             @Value("${frontend.base-url:http://localhost:4200}") String frontendBaseUrl) {
         this.authChannelInterceptor = authChannelInterceptor;
+        this.webSocketHandshakeHandler = webSocketHandshakeHandler;
         this.frontendBaseUrl = frontendBaseUrl;
     }
 
@@ -37,6 +40,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         "http://localhost:*",
                         "http://127.0.0.1:*"
                 )
+                .setHandshakeHandler(webSocketHandshakeHandler)
                 .withSockJS();
     }
 

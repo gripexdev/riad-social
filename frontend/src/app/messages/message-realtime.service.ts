@@ -11,7 +11,6 @@ import { Message } from './message.service';
 export class MessageRealtimeService {
   private client: Client | null = null;
   private readonly messageSubject = new Subject<Message>();
-  private readonly socketUrl = this.buildSocketUrl();
 
   constructor(
     private authService: AuthService,
@@ -27,8 +26,9 @@ export class MessageRealtimeService {
       return;
     }
 
+    const socketUrl = this.buildSocketUrl(token);
     this.client = new Client({
-      webSocketFactory: () => new SockJS(this.socketUrl),
+      webSocketFactory: () => new SockJS(socketUrl),
       connectHeaders: {
         Authorization: `Bearer ${token}`,
         token
@@ -81,12 +81,13 @@ export class MessageRealtimeService {
     });
   }
 
-  private buildSocketUrl(): string {
+  private buildSocketUrl(token: string): string {
     if (typeof window === 'undefined') {
-      return 'http://localhost:8080/ws';
+      return `http://localhost:8080/ws?token=${encodeURIComponent(token)}`;
     }
     const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
     const host = window.location.hostname || 'localhost';
-    return `${protocol}://${host}:8080/ws`;
+    return `${protocol}://${host}:8080/ws?token=${encodeURIComponent(token)}`;
   }
+
 }
