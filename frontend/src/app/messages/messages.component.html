@@ -1,138 +1,166 @@
-<div class="mx-auto w-full max-w-6xl">
-  <div class="grid gap-4 lg:grid-cols-[320px_1fr]">
-    <section class="flex min-h-[70vh] flex-col rounded-3xl border border-line bg-white/90 p-4 shadow-soft">
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <h2 class="text-xl font-semibold text-ink">Messages</h2>
-          <p class="text-xs text-muted">Private chats with your community.</p>
+<div class="messages-shell">
+  <div class="messages-frame">
+    <aside class="messages-sidebar">
+      <div class="messages-sidebar__top">
+        <div class="sidebar-account">
+          <div class="sidebar-account__name">
+            <span class="sidebar-account__label">{{ currentUsername || 'Messages' }}</span>
+            <span class="material-icons">keyboard_arrow_down</span>
+          </div>
+          <button class="icon-button" type="button" (click)="startNewMessage()">
+            <span class="material-icons">edit</span>
+          </button>
         </div>
-        <button class="rounded-full border border-line px-3 py-2 text-xs font-semibold text-ink transition hover:border-ink/40" type="button" (click)="startNewMessage()">
-          New
-        </button>
+
+        <label class="messages-search">
+          <span class="material-icons">search</span>
+          <input type="text" placeholder="Search" aria-label="Search conversations" />
+        </label>
+
+        <div class="notes-strip">
+          <div class="notes-title">Notes</div>
+          <div class="notes-row">
+            <div class="note-card">
+              <div class="note-avatar note-avatar--me">
+                <span>{{ currentUsername ? (currentUsername[0] | uppercase) : 'U' }}</span>
+              </div>
+              <div class="note-label">Your note</div>
+            </div>
+            <ng-container *ngFor="let conversation of conversations | slice:0:6">
+              <div class="note-card">
+                <div class="note-avatar">
+                  <img *ngIf="conversation.participantProfilePictureUrl; else noteInitial" class="note-image" [src]="conversation.participantProfilePictureUrl" [alt]="conversation.participantUsername + ' avatar'">
+                  <ng-template #noteInitial>{{ conversation.participantUsername[0] | uppercase }}</ng-template>
+                </div>
+                <div class="note-label">{{ conversation.participantUsername }}</div>
+              </div>
+            </ng-container>
+          </div>
+        </div>
       </div>
 
-      <div class="mt-4 flex-1 space-y-3 overflow-y-auto">
-        <div *ngIf="isLoadingConversations" class="rounded-2xl border border-line bg-white/80 p-4 text-xs text-muted">
-          Loading conversations...
-        </div>
-        <div *ngIf="errorMessage" class="rounded-2xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
-          {{ errorMessage }}
-        </div>
-        <div *ngIf="!isLoadingConversations && !errorMessage && conversations.length === 0" class="rounded-2xl border border-line bg-white/80 p-4 text-xs text-muted">
-          No conversations yet. Start a new message.
+      <div class="messages-sidebar__list">
+        <div class="messages-list-header">
+          <h3>Messages</h3>
+          <button type="button" class="messages-list-action">Requests</button>
         </div>
 
-        <button
-          *ngFor="let conversation of conversations; trackBy: trackByConversationId"
-          type="button"
-          class="flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition hover:bg-sand/40"
-          [ngClass]="selectedConversationId === conversation.id ? 'border-accent bg-sand/60' : 'border-line bg-white/80'"
-          (click)="selectConversation(conversation)"
-          [attr.aria-pressed]="selectedConversationId === conversation.id"
-        >
-          <div class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-accent to-accent-strong text-xs font-semibold text-white shadow-glow">
-            <img *ngIf="conversation.participantProfilePictureUrl; else participantInitial" class="h-full w-full object-cover" [src]="conversation.participantProfilePictureUrl" [alt]="conversation.participantUsername + ' avatar'">
-            <ng-template #participantInitial>{{ conversation.participantUsername[0] | uppercase }}</ng-template>
+        <div class="conversation-list">
+          <div *ngIf="isLoadingConversations" class="list-state">
+            Loading conversations...
           </div>
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center justify-between gap-2">
-              <div class="truncate text-sm font-semibold text-ink">{{ conversation.participantUsername }}</div>
-              <span class="text-[11px] text-muted">{{ formatRelativeTime(conversation.lastMessageAt) }}</span>
-            </div>
-            <div class="mt-1 flex items-center justify-between gap-2">
-              <div class="truncate text-xs text-muted">{{ getConversationPreview(conversation) }}</div>
-              <span *ngIf="conversation.unreadCount > 0" class="ml-2 inline-flex min-w-[20px] items-center justify-center rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
-                {{ conversation.unreadCount > 9 ? '9+' : conversation.unreadCount }}
-              </span>
-            </div>
-            <div *ngIf="conversation.participantFullName" class="mt-1 truncate text-[11px] text-muted">
-              {{ conversation.participantFullName }}
-            </div>
+          <div *ngIf="errorMessage" class="list-state list-state--error">
+            {{ errorMessage }}
           </div>
-        </button>
+          <div *ngIf="!isLoadingConversations && !errorMessage && conversations.length === 0" class="list-state">
+            No conversations yet. Start a new message.
+          </div>
+
+          <button
+            *ngFor="let conversation of conversations; trackBy: trackByConversationId"
+            type="button"
+            class="conversation-item"
+            [class.is-active]="selectedConversationId === conversation.id"
+            (click)="selectConversation(conversation)"
+            [attr.aria-pressed]="selectedConversationId === conversation.id"
+          >
+            <div class="conversation-avatar">
+              <img *ngIf="conversation.participantProfilePictureUrl; else participantInitial" class="conversation-image" [src]="conversation.participantProfilePictureUrl" [alt]="conversation.participantUsername + ' avatar'">
+              <ng-template #participantInitial>{{ conversation.participantUsername[0] | uppercase }}</ng-template>
+            </div>
+            <div class="conversation-content">
+              <div class="conversation-title">
+                <span class="conversation-name">{{ conversation.participantUsername }}</span>
+              </div>
+              <div class="conversation-preview">
+                <span class="conversation-preview__text">{{ getConversationPreview(conversation) }}</span>
+                <span *ngIf="conversation.lastMessageAt" class="conversation-preview__dot">&middot;</span>
+                <span *ngIf="conversation.lastMessageAt" class="conversation-preview__time">{{ formatRelativeTime(conversation.lastMessageAt) }}</span>
+              </div>
+            </div>
+            <span *ngIf="conversation.unreadCount > 0" class="conversation-unread"></span>
+          </button>
+        </div>
       </div>
-    </section>
+    </aside>
 
-    <section class="flex min-h-[70vh] flex-col rounded-3xl border border-line bg-white/90 shadow-soft">
-      <div class="flex items-center justify-between border-b border-line px-5 py-4">
-        <ng-container *ngIf="selectedConversation; else emptyHeader">
-          <div class="flex items-center gap-3">
-            <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-accent to-accent-strong text-sm font-semibold text-white shadow-glow">
-              <img *ngIf="selectedConversation.participantProfilePictureUrl; else selectedInitial" class="h-full w-full object-cover" [src]="selectedConversation.participantProfilePictureUrl" [alt]="selectedConversation.participantUsername + ' avatar'">
+    <section class="messages-thread">
+      <ng-container *ngIf="selectedConversation; else emptyHeader">
+        <header class="thread-header">
+          <div class="thread-user">
+            <div class="thread-avatar">
+              <img *ngIf="selectedConversation.participantProfilePictureUrl; else selectedInitial" class="thread-image" [src]="selectedConversation.participantProfilePictureUrl" [alt]="selectedConversation.participantUsername + ' avatar'">
               <ng-template #selectedInitial>{{ selectedConversation.participantUsername[0] | uppercase }}</ng-template>
             </div>
             <div>
-              <div class="text-sm font-semibold text-ink">{{ selectedConversation.participantUsername }}</div>
-              <div class="text-xs text-muted">{{ selectedConversation.participantFullName || ' ' }}</div>
+              <div class="thread-name">{{ selectedConversation.participantUsername }}</div>
+              <div class="thread-subtitle">{{ selectedConversation.participantFullName || ' ' }}</div>
             </div>
           </div>
-          <a class="rounded-full border border-line px-3 py-2 text-xs font-semibold text-ink transition hover:border-ink/40" [routerLink]="['/users', selectedConversation.participantUsername]">
-            View profile
+          <a class="thread-action" [routerLink]="['/users', selectedConversation.participantUsername]">
+            <span class="material-icons">info</span>
           </a>
-        </ng-container>
-        <ng-template #emptyHeader>
-          <div>
-            <div class="text-sm font-semibold text-ink">Start a conversation</div>
-            <div class="text-xs text-muted">Send a private message.</div>
-          </div>
-        </ng-template>
-      </div>
+        </header>
+      </ng-container>
+      <ng-template #emptyHeader>
+        <header class="thread-header thread-header--empty"></header>
+      </ng-template>
 
-      <div class="flex-1 overflow-y-auto px-5 py-4 message-scroll" #messageScroll>
+      <div class="thread-body message-scroll" #messageScroll>
         <ng-container *ngIf="selectedConversationId; else emptyState">
-          <div *ngIf="isLoadingMessages" class="rounded-2xl border border-line bg-white/80 p-4 text-xs text-muted">
+          <div *ngIf="isLoadingMessages" class="thread-state">
             Loading messages...
           </div>
-          <div *ngIf="messageLoadError" class="rounded-2xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+          <div *ngIf="messageLoadError" class="thread-state thread-state--error">
             {{ messageLoadError }}
           </div>
-          <div *ngIf="!isLoadingMessages && !messageLoadError && messages.length === 0" class="rounded-2xl border border-line bg-white/80 p-4 text-xs text-muted">
+          <div *ngIf="!isLoadingMessages && !messageLoadError && messages.length === 0" class="thread-state">
             No messages yet. Say hello.
           </div>
 
-          <div *ngFor="let message of messages; trackBy: trackByMessageId" class="flex" [ngClass]="isOutgoing(message) ? 'justify-end' : 'justify-start'">
-            <div class="max-w-[75%] rounded-2xl px-4 py-2 shadow-sm"
-                 [ngClass]="isOutgoing(message) ? 'bg-gradient-to-r from-accent to-accent-strong text-white' : 'border border-line bg-white text-ink'">
-              <div class="whitespace-pre-line text-sm leading-relaxed">{{ message.content }}</div>
-              <div class="mt-1 text-[10px]" [ngClass]="isOutgoing(message) ? 'text-white/70' : 'text-muted'">
-                {{ formatMessageTime(message.createdAt) }}
-              </div>
+          <div *ngFor="let message of messages; trackBy: trackByMessageId" class="message-row" [class.is-outgoing]="isOutgoing(message)">
+            <div class="message-bubble">
+              <div class="message-content">{{ message.content }}</div>
+              <div class="message-time">{{ formatMessageTime(message.createdAt) }}</div>
             </div>
           </div>
         </ng-container>
 
         <ng-template #emptyState>
-          <div class="flex h-full items-center justify-center">
-            <div class="max-w-sm text-center">
-              <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-sand/70 text-ink">
-                <span class="material-icons text-[20px]">chat_bubble_outline</span>
-              </div>
-              <h3 class="mt-4 text-lg font-semibold text-ink">Start a new chat</h3>
-              <p class="mt-2 text-sm text-muted">Enter a username and send your first message.</p>
+          <div class="thread-empty">
+            <div class="thread-empty__icon">
+              <span class="material-icons">send</span>
             </div>
+            <h3>Your messages</h3>
+            <p>Send private photos and messages to a friend or group.</p>
+            <button class="thread-empty__button" type="button" (click)="startNewMessage()">Send message</button>
           </div>
         </ng-template>
       </div>
 
-      <div class="border-t border-line bg-white/70 px-5 py-4">
-        <div *ngIf="!selectedConversationId" class="mb-3">
-          <label class="text-xs font-semibold uppercase tracking-[0.2em] text-muted">To</label>
-          <input class="mt-2 w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
-                 [formControl]="recipientControl"
-                 placeholder="username" />
+      <div class="thread-composer" *ngIf="selectedConversationId || isComposingNew">
+        <div *ngIf="!selectedConversationId" class="composer-recipient">
+          <label>To</label>
+          <input
+            type="text"
+            [formControl]="recipientControl"
+            placeholder="username"
+            aria-label="Recipient username"
+          />
         </div>
-        <label class="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Message</label>
-        <textarea
-          class="mt-2 w-full resize-none rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
-          rows="3"
-          [formControl]="messageControl"
-          (keydown)="onMessageKeydown($event)"
-          placeholder="Write a message..."
-        ></textarea>
-        <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
-          <span>{{ messageLength }} / {{ maxMessageLength }}</span>
+        <div class="composer-field">
+          <label>Message</label>
+          <textarea
+            rows="2"
+            [formControl]="messageControl"
+            (keydown)="onMessageKeydown($event)"
+            placeholder="Write a message..."
+          ></textarea>
+        </div>
+        <div class="composer-actions">
+          <span class="composer-count">{{ messageLength }} / {{ maxMessageLength }}</span>
           <button
-            class="rounded-full bg-gradient-to-r from-accent to-accent-strong px-5 py-2 text-xs font-semibold text-white shadow-glow transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            class="composer-send"
             type="button"
             [disabled]="!canSend()"
             (click)="sendMessage()"
@@ -140,7 +168,7 @@
             {{ isSending ? 'Sending...' : 'Send' }}
           </button>
         </div>
-        <div *ngIf="sendError" class="mt-3 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+        <div *ngIf="sendError" class="composer-error">
           {{ sendError }}
         </div>
       </div>

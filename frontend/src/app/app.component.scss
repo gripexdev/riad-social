@@ -2,6 +2,43 @@
   animation: drawerIn 0.2s ease;
 }
 
+:host .app-sidebar {
+  z-index: 30;
+}
+
+:host.messages-route .app-sidebar {
+  display: flex;
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 16rem;
+}
+
+:host.messages-route .app-shell {
+  padding-left: 16rem;
+}
+
+:host.messages-route .app-main {
+  padding: 0;
+  background: #0b0e12;
+  min-height: 100vh;
+}
+
+:host.messages-route.notifications-open .messages-shell {
+  pointer-events: none;
+  user-select: none;
+  filter: blur(2px);
+  opacity: 0.25;
+}
+
+:host.messages-route .notifications-backdrop {
+  background: rgba(5, 7, 10, 0.75);
+  backdrop-filter: blur(6px);
+}
+
+:host.messages-route .app-mobile-header {
+  display: none;
+}
+
 @keyframes drawerIn {
   from {
     opacity: 0;

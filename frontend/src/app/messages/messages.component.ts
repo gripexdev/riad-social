@@ -26,6 +26,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
   errorMessage: string | null = null;
   messageLoadError: string | null = null;
   sendError: string | null = null;
+  isComposingNew = false;
   recipientControl: FormControl<string>;
   messageControl: FormControl<string>;
   readonly maxMessageLength = 2000;
@@ -68,6 +69,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
       this.selectedConversationId = Number.isFinite(parsedId) ? parsedId : null;
       if (this.selectedConversationId !== null) {
         this.loadMessages(this.selectedConversationId);
+        this.isComposingNew = false;
       } else {
         this.messages = [];
         this.messageLoadError = null;
@@ -126,6 +128,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
     this.messages = [];
     this.messageLoadError = null;
     this.sendError = null;
+    this.isComposingNew = true;
     this.recipientControl.setValue('');
     this.messageControl.setValue('');
   }
@@ -162,7 +165,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
           this.recipientControl.setValue('');
           this.router.navigate(['/messages', message.conversationId]);
         } else {
-          this.messages = [...this.messages, message];
+          this.appendMessageIfMissing(message);
           this.scrollToBottom();
         }
         this.loadConversations();
