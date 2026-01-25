@@ -492,6 +492,29 @@
   color: #f5f7fb;
 }
 
+.message-bubble--typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.65rem 0.8rem;
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--dm-muted-strong);
+  animation: typingPulse 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
 .message-row.is-outgoing .message-bubble {
   background: linear-gradient(135deg, var(--dm-accent), var(--dm-accent-strong));
   border-color: transparent;
@@ -512,6 +535,19 @@
 
 .message-row.is-outgoing .message-time {
   color: rgba(255, 255, 255, 0.7);
+}
+
+@keyframes typingPulse {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
 }
 
 .thread-composer {

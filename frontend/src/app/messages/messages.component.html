@@ -124,6 +124,13 @@
               <div class="message-time">{{ formatMessageTime(message.createdAt) }}</div>
             </div>
           </div>
+          <div *ngIf="showTypingIndicator" class="message-row">
+            <div class="message-bubble message-bubble--typing" aria-label="Typing">
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+            </div>
+          </div>
         </ng-container>
 
         <ng-template #emptyState>
@@ -154,6 +161,8 @@
             rows="2"
             [formControl]="messageControl"
             (keydown)="onMessageKeydown($event)"
+            (input)="onMessageInput()"
+            (blur)="onMessageBlur()"
             placeholder="Write a message..."
           ></textarea>
         </div>

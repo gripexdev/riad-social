@@ -6,7 +6,7 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { AuthService } from '../auth/auth.service';
 import { Conversation, Message, MessageService } from './message.service';
-import { MessageRealtimeService } from './message-realtime.service';
+import { MessageRealtimeService, TypingEvent } from './message-realtime.service';
 
 @Component({
   selector: 'app-messages',
@@ -31,6 +31,13 @@ export class MessagesComponent implements OnInit, OnDestroy {
   messageControl: FormControl<string>;
   readonly maxMessageLength = 2000;
   readonly previewLimit = 120;
+  typingConversationId: number | null = null;
+  typingUsername: string | null = null;
+  private typingTimeoutId: number | null = null;
+  private typingSendTimeoutId: number | null = null;
+  private typingActive = false;
+  private typingLastSentAt = 0;
+  private readonly typingSendIntervalMs = 800;
   private readonly destroy$ = new Subject<void>();
 
   @ViewChild('messageScroll') messageScroll?: ElementRef<HTMLDivElement>;
@@ -63,9 +70,18 @@ export class MessagesComponent implements OnInit, OnDestroy {
       .subscribe(message => {
         this.handleIncomingMessage(message);
       });
+    this.messageRealtimeService.onTyping()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(event => {
+        this.handleTypingEvent(event);
+      });
     this.route.paramMap.pipe(takeUntil(this.destroy$)).subscribe(params => {
       const rawId = params.get('conversationId');
       const parsedId = rawId ? Number(rawId) : Number.NaN;
+      if (this.selectedConversationId !== parsedId) {
+        this.stopTypingSignal();
+        this.clearTypingIndicator();
+      }
       this.selectedConversationId = Number.isFinite(parsedId) ? parsedId : null;
       if (this.selectedConversationId !== null) {
         this.loadMessages(this.selectedConversationId);
@@ -123,12 +139,14 @@ export class MessagesComponent implements OnInit, OnDestroy {
 
   startNewMessage(): void {
     this.router.navigate(['/messages']);
+    this.stopTypingSignal();
     this.selectedConversationId = null;
     this.selectedConversation = null;
     this.messages = [];
     this.messageLoadError = null;
     this.sendError = null;
     this.isComposingNew = true;
+    this.clearTypingIndicator();
     this.recipientControl.setValue('');
     this.messageControl.setValue('');
   }
@@ -155,12 +173,14 @@ export class MessagesComponent implements OnInit, OnDestroy {
       return;
     }
 
+    this.stopTypingSignal();
     this.isSending = true;
     this.sendError = null;
     this.messageService.sendMessage({ recipientUsername: recipient, content }).subscribe({
       next: (message) => {
         this.isSending = false;
         this.messageControl.setValue('');
+        this.stopTypingSignal();
         if (!this.selectedConversationId || this.selectedConversationId !== message.conversationId) {
           this.recipientControl.setValue('');
           this.router.navigate(['/messages', message.conversationId]);
@@ -185,6 +205,28 @@ export class MessagesComponent implements OnInit, OnDestroy {
         this.sendMessage();
       }
     }
+  }
+
+  onMessageInput(): void {
+    if (!this.selectedConversationId) {
+      return;
+    }
+    const now = Date.now();
+    if (!this.typingActive || now - this.typingLastSentAt >= this.typingSendIntervalMs) {
+      this.typingActive = true;
+      this.typingLastSentAt = now;
+      this.messageRealtimeService.sendTyping(this.selectedConversationId, true);
+    }
+    if (this.typingSendTimeoutId) {
+      window.clearTimeout(this.typingSendTimeoutId);
+    }
+    this.typingSendTimeoutId = window.setTimeout(() => {
+      this.stopTypingSignal();
+    }, 1500);
+  }
+
+  onMessageBlur(): void {
+    this.stopTypingSignal();
   }
 
   canSend(): boolean {
@@ -277,9 +319,15 @@ export class MessagesComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.stopTypingSignal();
+    this.clearTypingIndicator();
     this.messageRealtimeService.disconnect();
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  get showTypingIndicator(): boolean {
+    return this.typingConversationId !== null && this.typingConversationId === this.selectedConversationId;
   }
 
   private handleIncomingMessage(message: Message): void {
@@ -292,6 +340,30 @@ export class MessagesComponent implements OnInit, OnDestroy {
       }
     }
     this.updateConversationPreview(message);
+  }
+
+  private handleTypingEvent(event: TypingEvent): void {
+    if (!event || !event.conversationId) {
+      return;
+    }
+    if (event.senderUsername === this.currentUsername) {
+      return;
+    }
+    if (this.selectedConversationId !== event.conversationId) {
+      return;
+    }
+    if (!event.typing) {
+      this.clearTypingIndicator();
+      return;
+    }
+    this.typingConversationId = event.conversationId;
+    this.typingUsername = event.senderUsername;
+    if (this.typingTimeoutId) {
+      window.clearTimeout(this.typingTimeoutId);
+    }
+    this.typingTimeoutId = window.setTimeout(() => {
+      this.clearTypingIndicator();
+    }, 3000);
   }
 
   private appendMessageIfMissing(message: Message): void {
@@ -329,5 +401,25 @@ export class MessagesComponent implements OnInit, OnDestroy {
       return normalized;
     }
     return `${normalized.substring(0, this.previewLimit).trim()}...`;
+  }
+
+  private stopTypingSignal(): void {
+    if (this.typingSendTimeoutId) {
+      window.clearTimeout(this.typingSendTimeoutId);
+      this.typingSendTimeoutId = null;
+    }
+    if (this.typingActive && this.selectedConversationId) {
+      this.messageRealtimeService.sendTyping(this.selectedConversationId, false);
+    }
+    this.typingActive = false;
+  }
+
+  private clearTypingIndicator(): void {
+    if (this.typingTimeoutId) {
+      window.clearTimeout(this.typingTimeoutId);
+      this.typingTimeoutId = null;
+    }
+    this.typingConversationId = null;
+    this.typingUsername = null;
   }
 }

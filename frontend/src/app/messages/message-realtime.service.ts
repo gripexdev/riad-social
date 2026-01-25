@@ -5,12 +5,19 @@ import { Subject, Observable } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 import { Message } from './message.service';
 
+export interface TypingEvent {
+  conversationId: number;
+  senderUsername: string;
+  typing: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class MessageRealtimeService {
   private client: Client | null = null;
   private readonly messageSubject = new Subject<Message>();
+  private readonly typingSubject = new Subject<TypingEvent>();
 
   constructor(
     private authService: AuthService,
@@ -42,6 +49,9 @@ export class MessageRealtimeService {
       this.client?.subscribe('/user/queue/messages', (message) => {
         this.handleMessage(message);
       });
+      this.client?.subscribe('/user/queue/typing', (message) => {
+        this.handleTyping(message);
+      });
     };
 
     this.client.onStompError = (frame) => {
@@ -70,6 +80,20 @@ export class MessageRealtimeService {
     return this.messageSubject.asObservable();
   }
 
+  onTyping(): Observable<TypingEvent> {
+    return this.typingSubject.asObservable();
+  }
+
+  sendTyping(conversationId: number, typing: boolean): void {
+    if (!this.client?.active) {
+      return;
+    }
+    this.client.publish({
+      destination: '/app/messages/typing',
+      body: JSON.stringify({ conversationId, typing })
+    });
+  }
+
   private handleMessage(message: IMessage): void {
     this.zone.run(() => {
       try {
@@ -77,6 +101,17 @@ export class MessageRealtimeService {
         this.messageSubject.next(payload);
       } catch (error) {
         console.error('Failed to parse realtime message payload', error);
+      }
+    });
+  }
+
+  private handleTyping(message: IMessage): void {
+    this.zone.run(() => {
+      try {
+        const payload = JSON.parse(message.body) as TypingEvent;
+        this.typingSubject.next(payload);
+      } catch (error) {
+        console.error('Failed to parse realtime typing payload', error);
       }
     });
   }

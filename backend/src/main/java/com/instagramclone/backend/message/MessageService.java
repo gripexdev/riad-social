@@ -100,6 +100,22 @@ public class MessageService {
         messageRepository.markConversationRead(conversation, currentUser, LocalDateTime.now());
     }
 
+    @Transactional(readOnly = true)
+    public void sendTypingIndicator(String senderUsername, TypingEventRequest request) {
+        if (request == null || request.getConversationId() == null) {
+            return;
+        }
+        User sender = loadUser(senderUsername);
+        Conversation conversation = getConversationForUser(request.getConversationId(), sender);
+        User recipient = resolveOtherParticipant(conversation, sender);
+        TypingEventResponse response = new TypingEventResponse(
+                conversation.getId(),
+                sender.getUsername(),
+                request.isTyping()
+        );
+        messagingTemplate.convertAndSendToUser(recipient.getUsername(), "/queue/typing", response);
+    }
+
     private ConversationResponse toConversationResponse(Conversation conversation, User currentUser) {
         User other = resolveOtherParticipant(conversation, currentUser);
         long unreadCount = messageRepository.countByConversationAndRecipientAndReadIsFalse(conversation, currentUser);
