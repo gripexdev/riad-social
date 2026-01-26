@@ -102,6 +102,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
   private readonly uploadItemByAttachmentId = new Map<number, string>();
   private readonly uploadCancelMap = new Map<string, Subject<void>>();
   private readonly uploadSubscriptions = new Map<string, Subscription>();
+  private pendingRecipientUsername: string | null = null;
 
   mediaViewer: MediaViewerState | null = null;
 
@@ -163,6 +164,11 @@ export class MessagesComponent implements OnInit, OnDestroy {
       }
       this.syncSelectedConversation();
     });
+    this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      const recipient = (params.get('recipient') || '').trim();
+      this.pendingRecipientUsername = recipient.length > 0 ? recipient : null;
+      this.applyRecipientNavigation();
+    });
   }
 
   loadConversations(): void {
@@ -172,6 +178,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
       next: (conversations) => {
         this.conversations = conversations || [];
         this.syncSelectedConversation();
+        this.applyRecipientNavigation();
         this.isLoadingConversations = false;
       },
       error: (error) => {
@@ -576,6 +583,54 @@ export class MessagesComponent implements OnInit, OnDestroy {
 
   getAttachmentStatusClass(attachment: MessageAttachment): string {
     return `status-${attachment.status.toLowerCase()}`;
+  }
+
+  private applyRecipientNavigation(): void {
+    const recipient = this.pendingRecipientUsername;
+    if (!recipient) {
+      return;
+    }
+    if (this.selectedConversationId !== null) {
+      return;
+    }
+    const existing = this.findConversationByUsername(recipient);
+    if (existing && !this.hasDraft()) {
+      this.router.navigate(['/messages', existing.id]);
+      return;
+    }
+    if (!this.isComposingNew || this.recipientControl.value.trim() !== recipient) {
+      this.prepareComposer(recipient);
+    }
+  }
+
+  private findConversationByUsername(username: string): Conversation | undefined {
+    const normalized = username.trim().toLowerCase();
+    if (!normalized) {
+      return undefined;
+    }
+    return this.conversations.find(conversation => conversation.participantUsername.toLowerCase() === normalized);
+  }
+
+  private prepareComposer(recipient: string): void {
+    const normalized = recipient.trim();
+    if (!normalized) {
+      return;
+    }
+    this.stopTypingSignal();
+    this.selectedConversationId = null;
+    this.selectedConversation = null;
+    this.messages = [];
+    this.messageLoadError = null;
+    this.sendError = null;
+    this.clearAttachments();
+    this.isComposingNew = true;
+    this.clearTypingIndicator();
+    this.recipientControl.setValue(normalized);
+    this.messageControl.setValue('');
+  }
+
+  private hasDraft(): boolean {
+    return this.messageControl.value.trim().length > 0 || this.attachmentItems.length > 0;
   }
 
   private syncSelectedConversation(): void {
