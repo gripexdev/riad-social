@@ -4,6 +4,7 @@ import com.instagramclone.backend.jwt.JwtAuthenticationFilter;
 import com.instagramclone.backend.user.UserService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -47,6 +48,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/uploads/**", "/api/uploads/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/messages/attachments/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
                 .anyRequest().authenticated()
             )
@@ -59,7 +61,11 @@ public class SecurityConfig {
 
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
-        return (web) -> web.ignoring().requestMatchers("/uploads/**", "/api/uploads/**", "/ws/**");
+        return (web) -> web.ignoring().requestMatchers(
+                "/uploads/**",
+                "/api/uploads/**",
+                "/ws/**"
+        );
     }
 
     @Bean

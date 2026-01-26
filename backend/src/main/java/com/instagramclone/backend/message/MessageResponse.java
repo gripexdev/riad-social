@@ -2,6 +2,7 @@ package com.instagramclone.backend.message;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class MessageResponse {
     private Long id;
@@ -9,6 +10,7 @@ public class MessageResponse {
     private String senderUsername;
     private String recipientUsername;
     private String content;
+    private List<MessageAttachmentResponse> attachments;
     private LocalDateTime createdAt;
     @JsonProperty("isRead")
     private boolean isRead;
@@ -20,6 +22,7 @@ public class MessageResponse {
             String senderUsername,
             String recipientUsername,
             String content,
+            List<MessageAttachmentResponse> attachments,
             LocalDateTime createdAt,
             boolean isRead,
             LocalDateTime readAt
@@ -29,6 +32,7 @@ public class MessageResponse {
         this.senderUsername = senderUsername;
         this.recipientUsername = recipientUsername;
         this.content = content;
+        this.attachments = attachments;
         this.createdAt = createdAt;
         this.isRead = isRead;
         this.readAt = readAt;
@@ -52,6 +56,10 @@ public class MessageResponse {
 
     public String getContent() {
         return content;
+    }
+
+    public List<MessageAttachmentResponse> getAttachments() {
+        return attachments;
     }
 
     public LocalDateTime getCreatedAt() {

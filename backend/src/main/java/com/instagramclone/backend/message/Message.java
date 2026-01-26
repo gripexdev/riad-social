@@ -3,6 +3,8 @@ package com.instagramclone.backend.message;
 import com.instagramclone.backend.user.User;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "messages")
@@ -33,6 +35,10 @@ public class Message {
     private boolean read = false;
 
     private LocalDateTime readAt;
+
+    @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdAt ASC")
+    private List<MessageAttachment> attachments = new ArrayList<>();
 
     public Message() {
         this.createdAt = LocalDateTime.now();
@@ -104,5 +110,13 @@ public class Message {
 
     public void setReadAt(LocalDateTime readAt) {
         this.readAt = readAt;
+    }
+
+    public List<MessageAttachment> getAttachments() {
+        return attachments;
+    }
+
+    public void setAttachments(List<MessageAttachment> attachments) {
+        this.attachments = attachments;
     }
 }

@@ -3,14 +3,20 @@ package com.instagramclone.backend.message;
 import com.instagramclone.backend.user.User;
 import com.instagramclone.backend.user.UserRepository;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
 public class MessageService {
@@ -22,17 +28,25 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final AttachmentTokenService attachmentTokenService;
+    private final String backendBaseUrl;
 
     public MessageService(
             ConversationRepository conversationRepository,
             MessageRepository messageRepository,
             UserRepository userRepository,
-            SimpMessagingTemplate messagingTemplate
+            SimpMessagingTemplate messagingTemplate,
+            AttachmentTokenService attachmentTokenService,
+            @Value("${backend.base-url:http://localhost:8080}") String backendBaseUrl
     ) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
         this.messagingTemplate = messagingTemplate;
+        this.attachmentTokenService = attachmentTokenService;
+        this.backendBaseUrl = (backendBaseUrl == null || backendBaseUrl.isBlank())
+                ? "http://localhost:8080"
+                : backendBaseUrl;
     }
 
     @Transactional(readOnly = true)
@@ -48,7 +62,7 @@ public class MessageService {
         User currentUser = loadUser(username);
         Conversation conversation = getConversationForUser(conversationId, currentUser);
         return messageRepository.findByConversationOrderByCreatedAtAsc(conversation).stream()
-                .map(this::toMessageResponse)
+                .map(message -> toMessageResponse(message, currentUser))
                 .collect(Collectors.toList());
     }
 
@@ -57,14 +71,14 @@ public class MessageService {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Message request is required.");
         }
-        String recipientUsername = normalizeUsername(request.getRecipientUsername());
+        String recipientUsername = normalize(request.getRecipientUsername());
         if (recipientUsername.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Recipient username is required.");
         }
         if (recipientUsername.equalsIgnoreCase(senderUsername)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You cannot message yourself.");
         }
-        String content = normalizeContent(request.getContent());
+        String content = normalize(request.getContent());
         if (content.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Message content is required.");
         }
@@ -77,20 +91,32 @@ public class MessageService {
 
         User sender = loadUser(senderUsername);
         User recipient = loadUser(recipientUsername);
+        Message message = createMessageWithAttachments(sender, recipient, content, Collections.emptyList());
 
+        notifyMessageCreated(message);
+        return toMessageResponse(message, sender);
+    }
+
+    @Transactional
+    public Message createMessageWithAttachments(
+            User sender,
+            User recipient,
+            String content,
+            List<MessageAttachment> attachments
+    ) {
         Conversation conversation = getOrCreateConversation(sender, recipient);
-        Message message = new Message(conversation, sender, recipient, content);
+        Message message = new Message(conversation, sender, recipient, content == null ? "" : content.trim());
+        if (attachments != null) {
+            attachments.forEach(attachment -> attachment.setMessage(message));
+            message.setAttachments(attachments);
+        }
         Message savedMessage = messageRepository.save(message);
 
         conversation.setLastMessageAt(savedMessage.getCreatedAt());
-        conversation.setLastMessagePreview(buildPreview(savedMessage.getContent()));
+        conversation.setLastMessagePreview(buildPreview(savedMessage.getContent(), savedMessage.getAttachments()));
         conversation.setLastMessageSender(sender);
         conversationRepository.save(conversation);
-
-        MessageResponse response = toMessageResponse(savedMessage);
-        messagingTemplate.convertAndSendToUser(recipient.getUsername(), "/queue/messages", response);
-        messagingTemplate.convertAndSendToUser(sender.getUsername(), "/queue/messages", response);
-        return response;
+        return savedMessage;
     }
 
     @Transactional
@@ -116,6 +142,111 @@ public class MessageService {
         messagingTemplate.convertAndSendToUser(recipient.getUsername(), "/queue/typing", response);
     }
 
+    public MessageResponse toMessageResponse(Message message, User viewer) {
+        return new MessageResponse(
+                message.getId(),
+                message.getConversation().getId(),
+                message.getSender().getUsername(),
+                message.getRecipient().getUsername(),
+                message.getContent(),
+                toAttachmentResponses(message, viewer),
+                message.getCreatedAt(),
+                message.isRead(),
+                message.getReadAt()
+        );
+    }
+
+    public MessageAttachmentResponse toAttachmentResponse(MessageAttachment attachment, User viewer) {
+        String url = null;
+        String thumbnailUrl = null;
+        if (attachment.getStatus() == AttachmentStatus.READY && !isExpired(attachment)) {
+            url = buildAttachmentUrl(attachment.getId(), viewer.getId());
+            if (attachment.getThumbnailKey() != null) {
+                thumbnailUrl = buildThumbnailUrl(attachment.getId(), viewer.getId());
+            }
+        }
+        return new MessageAttachmentResponse(
+                attachment.getId(),
+                attachment.getType(),
+                attachment.getMimeType(),
+                attachment.getSizeBytes(),
+                attachment.getChecksum(),
+                attachment.getWidth(),
+                attachment.getHeight(),
+                attachment.getDurationSeconds(),
+                attachment.getAltText(),
+                url,
+                thumbnailUrl,
+                resolveStatusForResponse(attachment),
+                attachment.getExpiresAt(),
+                attachment.getOriginalFilename()
+        );
+    }
+
+    public void notifyMessageCreated(Message message) {
+        User sender = message.getSender();
+        User recipient = message.getRecipient();
+        messagingTemplate.convertAndSendToUser(sender.getUsername(), "/queue/messages", toMessageResponse(message, sender));
+        messagingTemplate.convertAndSendToUser(recipient.getUsername(), "/queue/messages", toMessageResponse(message, recipient));
+    }
+
+    public void notifyMessageUpdated(Message message) {
+        if (message == null) {
+            return;
+        }
+        User sender = message.getSender();
+        User recipient = message.getRecipient();
+        messagingTemplate.convertAndSendToUser(sender.getUsername(), "/queue/messages", toMessageResponse(message, sender));
+        messagingTemplate.convertAndSendToUser(recipient.getUsername(), "/queue/messages", toMessageResponse(message, recipient));
+    }
+
+    private List<MessageAttachmentResponse> toAttachmentResponses(Message message, User viewer) {
+        List<MessageAttachment> attachments = message.getAttachments();
+        if (attachments == null || attachments.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return attachments.stream()
+                .map(attachment -> toAttachmentResponse(attachment, viewer))
+                .collect(Collectors.toList());
+    }
+
+    private String buildAttachmentUrl(Long attachmentId, Long viewerId) {
+        String token = attachmentTokenService.generateToken(attachmentId, viewerId);
+        return buildBaseUrl()
+                .path("/api/messages/attachments/")
+                .path(String.valueOf(attachmentId))
+                .queryParam("token", token)
+                .toUriString();
+    }
+
+    private String buildThumbnailUrl(Long attachmentId, Long viewerId) {
+        String token = attachmentTokenService.generateToken(attachmentId, viewerId);
+        return buildBaseUrl()
+                .path("/api/messages/attachments/")
+                .path(String.valueOf(attachmentId))
+                .path("/thumbnail")
+                .queryParam("token", token)
+                .toUriString();
+    }
+
+    private UriComponentsBuilder buildBaseUrl() {
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes) {
+            return ServletUriComponentsBuilder.fromCurrentContextPath();
+        }
+        return UriComponentsBuilder.fromHttpUrl(backendBaseUrl);
+    }
+
+    private boolean isExpired(MessageAttachment attachment) {
+        return attachment.getExpiresAt() != null && attachment.getExpiresAt().isBefore(LocalDateTime.now());
+    }
+
+    private AttachmentStatus resolveStatusForResponse(MessageAttachment attachment) {
+        if (isExpired(attachment)) {
+            return AttachmentStatus.EXPIRED;
+        }
+        return attachment.getStatus();
+    }
+
     private ConversationResponse toConversationResponse(Conversation conversation, User currentUser) {
         User other = resolveOtherParticipant(conversation, currentUser);
         long unreadCount = messageRepository.countByConversationAndRecipientAndReadIsFalse(conversation, currentUser);
@@ -131,19 +262,6 @@ public class MessageService {
                 conversation.getLastMessageAt(),
                 lastSenderUsername,
                 unreadCount
-        );
-    }
-
-    private MessageResponse toMessageResponse(Message message) {
-        return new MessageResponse(
-                message.getId(),
-                message.getConversation().getId(),
-                message.getSender().getUsername(),
-                message.getRecipient().getUsername(),
-                message.getContent(),
-                message.getCreatedAt(),
-                message.isRead(),
-                message.getReadAt()
         );
     }
 
@@ -196,22 +314,35 @@ public class MessageService {
                 ));
     }
 
-    private String normalizeUsername(String username) {
-        return username == null ? "" : username.trim();
+    private String normalize(String value) {
+        return value == null ? "" : value.trim();
     }
 
-    private String normalizeContent(String content) {
-        return content == null ? "" : content.trim();
-    }
-
-    private String buildPreview(String content) {
-        if (content == null) {
+    private String buildPreview(String content, List<MessageAttachment> attachments) {
+        if (content != null && !content.trim().isEmpty()) {
+            String normalized = content.trim().replaceAll("\\s+", " ");
+            if (normalized.length() <= MESSAGE_PREVIEW_LIMIT) {
+                return normalized;
+            }
+            return normalized.substring(0, MESSAGE_PREVIEW_LIMIT).trim() + "...";
+        }
+        if (attachments == null || attachments.isEmpty()) {
             return null;
         }
-        String normalized = content.trim().replaceAll("\\s+", " ");
-        if (normalized.length() <= MESSAGE_PREVIEW_LIMIT) {
-            return normalized;
+        if (attachments.size() == 1) {
+            return previewForAttachment(attachments.get(0));
         }
-        return normalized.substring(0, MESSAGE_PREVIEW_LIMIT).trim() + "...";
+        return attachments.size() + " attachments";
+    }
+
+    private String previewForAttachment(MessageAttachment attachment) {
+        if (attachment == null || attachment.getType() == null) {
+            return "Attachment";
+        }
+        return switch (attachment.getType()) {
+            case IMAGE -> "Photo";
+            case VIDEO -> "Video";
+            case DOCUMENT -> "Document";
+        };
     }
 }

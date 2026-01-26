@@ -120,7 +120,58 @@
 
           <div *ngFor="let message of messages; trackBy: trackByMessageId" class="message-row" [class.is-outgoing]="isOutgoing(message)">
             <div class="message-bubble">
-              <div class="message-content">{{ message.content }}</div>
+              <div *ngIf="message.attachments?.length" class="message-attachments">
+                <div
+                  *ngFor="let attachment of message.attachments; trackBy: trackByAttachmentId"
+                  class="message-attachment"
+                  [ngClass]="getAttachmentStatusClass(attachment)"
+                >
+                  <div *ngIf="attachment.status !== 'READY'" class="attachment-state">
+                    <span class="attachment-state__label">{{ getAttachmentLabel(attachment) }}</span>
+                    <span
+                      *ngIf="attachment.status === 'UPLOADING' && getAttachmentProgress(attachment.id) !== null"
+                      class="attachment-state__progress"
+                    >
+                      {{ getAttachmentProgress(attachment.id) }}%
+                    </span>
+                  </div>
+                  <ng-container *ngIf="attachment.status === 'READY'">
+                    <ng-container [ngSwitch]="attachment.type">
+                      <ng-container *ngSwitchCase="'IMAGE'">
+                        <button class="attachment-media attachment-media--image" type="button" (click)="openMediaViewer(attachment)">
+                          <img
+                            class="attachment-image"
+                            [src]="attachment.thumbnailUrl || attachment.url"
+                            [alt]="attachment.altText || attachment.originalFilename || 'Image attachment'"
+                          />
+                        </button>
+                        <div *ngIf="attachment.altText" class="attachment-caption">{{ attachment.altText }}</div>
+                      </ng-container>
+                      <ng-container *ngSwitchCase="'VIDEO'">
+                        <button class="attachment-media attachment-media--video" type="button" (click)="openMediaViewer(attachment)">
+                          <span class="material-icons">play_circle</span>
+                          <span class="attachment-video__label">Play video</span>
+                        </button>
+                      </ng-container>
+                      <ng-container *ngSwitchCase="'DOCUMENT'">
+                        <a
+                          class="attachment-doc"
+                          [href]="attachment.url"
+                          target="_blank"
+                          rel="noopener"
+                        >
+                          <span class="material-icons">description</span>
+                          <div>
+                            <div class="attachment-doc__name">{{ attachment.originalFilename || 'Document' }}</div>
+                            <div class="attachment-doc__meta">{{ formatFileSize(attachment.sizeBytes) }}</div>
+                          </div>
+                        </a>
+                      </ng-container>
+                    </ng-container>
+                  </ng-container>
+                </div>
+              </div>
+              <div *ngIf="message.content" class="message-content">{{ message.content }}</div>
               <div class="message-time">{{ formatMessageTime(message.createdAt) }}</div>
             </div>
           </div>
@@ -166,6 +217,108 @@
             placeholder="Write a message..."
           ></textarea>
         </div>
+        <div class="composer-tools">
+          <button class="composer-attach" type="button" (click)="triggerFilePicker()">
+            <span class="material-icons">attach_file</span>
+            Attach
+          </button>
+          <label class="composer-expire">
+            <input
+              type="checkbox"
+              [checked]="expireAttachments"
+              (change)="expireAttachments = $any($event.target).checked"
+            />
+            <span>Expire media in 24h</span>
+          </label>
+          <input
+            #fileInput
+            type="file"
+            multiple
+            accept="image/*,video/*,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            (change)="onFilesSelected($event)"
+          />
+        </div>
+        <div *ngIf="attachmentItems.length > 0" class="composer-attachments">
+          <div
+            *ngFor="let attachment of attachmentItems; trackBy: trackByAttachmentItemId"
+            class="composer-attachment"
+            [class.is-uploading]="attachment.status === 'UPLOADING' || attachment.status === 'FINALIZING'"
+            [class.is-failed]="attachment.status === 'FAILED'"
+          >
+            <div class="attachment-thumb">
+              <img
+                *ngIf="attachment.type === 'IMAGE' && attachment.previewUrl"
+                [src]="attachment.previewUrl"
+                [alt]="attachment.altText || attachment.displayName"
+              />
+              <video
+                *ngIf="attachment.type === 'VIDEO' && attachment.previewUrl"
+                [src]="attachment.previewUrl"
+                muted
+                preload="metadata"
+                playsinline
+              ></video>
+              <span *ngIf="attachment.type === 'DOCUMENT'" class="material-icons">description</span>
+              <div *ngIf="attachment.status === 'UPLOADING' || attachment.status === 'FINALIZING'" class="attachment-progress">
+                <div class="attachment-progress__bar" [style.width.%]="attachment.progress"></div>
+              </div>
+            </div>
+            <div class="attachment-info">
+              <div class="attachment-name">{{ attachment.displayName }}</div>
+              <div class="attachment-meta">
+                {{ formatFileSize(attachment.sizeBytes) }}
+                <span *ngIf="attachment.wasCompressed" class="attachment-compressed">compressed</span>
+                <span *ngIf="attachment.status === 'FINALIZING'" class="attachment-status">processing</span>
+                <span *ngIf="attachment.status === 'FAILED'" class="attachment-status">failed</span>
+              </div>
+              <div *ngIf="attachment.type === 'IMAGE' && attachment.status === 'DRAFT'" class="attachment-alt">
+                <input
+                  type="text"
+                  [value]="attachment.altText"
+                  (input)="updateAltText(attachment.id, $event)"
+                  placeholder="Alt text (optional)"
+                  aria-label="Alt text"
+                  [attr.maxlength]="maxAltTextLength"
+                />
+              </div>
+              <div *ngIf="attachment.error" class="attachment-error">{{ attachment.error }}</div>
+            </div>
+            <div class="attachment-actions">
+              <button
+                *ngIf="attachment.status === 'DRAFT'"
+                class="attachment-remove"
+                type="button"
+                (click)="removeAttachment(attachment.id)"
+              >
+                <span class="material-icons">close</span>
+              </button>
+              <button
+                *ngIf="attachment.status === 'UPLOADING' || attachment.status === 'FINALIZING'"
+                class="attachment-cancel"
+                type="button"
+                (click)="cancelUpload(attachment.id)"
+              >
+                Cancel
+              </button>
+              <button
+                *ngIf="attachment.status === 'FAILED'"
+                class="attachment-retry"
+                type="button"
+                (click)="retryUpload(attachment.id)"
+              >
+                Retry
+              </button>
+              <button
+                *ngIf="attachment.status === 'FAILED'"
+                class="attachment-remove"
+                type="button"
+                (click)="removeAttachment(attachment.id)"
+              >
+                <span class="material-icons">close</span>
+              </button>
+            </div>
+          </div>
+        </div>
         <div class="composer-actions">
           <span class="composer-count">{{ messageLength }} / {{ maxMessageLength }}</span>
           <button
@@ -179,6 +332,28 @@
         </div>
         <div *ngIf="sendError" class="composer-error">
           {{ sendError }}
+        </div>
+      </div>
+
+      <div *ngIf="mediaViewer" class="media-viewer" (click)="closeMediaViewer()">
+        <div class="media-viewer__content" (click)="$event.stopPropagation()">
+          <button class="media-viewer__close" type="button" (click)="closeMediaViewer()">
+            <span class="material-icons">close</span>
+          </button>
+          <img
+            *ngIf="mediaViewer.type === 'IMAGE'"
+            class="media-viewer__image"
+            [src]="mediaViewer.url"
+            [alt]="mediaViewer.altText || 'Image attachment'"
+          />
+          <video
+            *ngIf="mediaViewer.type === 'VIDEO'"
+            class="media-viewer__video"
+            [src]="mediaViewer.url"
+            controls
+            playsinline
+          ></video>
+          <div *ngIf="mediaViewer.altText" class="media-viewer__caption">{{ mediaViewer.altText }}</div>
         </div>
       </div>
     </section>
