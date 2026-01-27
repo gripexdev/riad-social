@@ -1,17 +1,26 @@
-ALTER TABLE IF EXISTS comments
-    ADD COLUMN IF NOT EXISTS parent_comment_id BIGINT;
-
 DO $$
 BEGIN
-    IF EXISTS (
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_name = 'comments'
-    ) THEN
+    IF to_regclass('public.comments') IS NOT NULL THEN
         ALTER TABLE comments
-            ADD CONSTRAINT IF NOT EXISTS fk_comments_parent_comment
-                FOREIGN KEY (parent_comment_id) REFERENCES comments(id) ON DELETE CASCADE;
-        CREATE INDEX IF NOT EXISTS idx_comments_parent_comment_id ON comments(parent_comment_id);
+            ADD COLUMN IF NOT EXISTS parent_comment_id BIGINT;
+
+        IF NOT EXISTS (
+            SELECT 1
+            FROM pg_constraint
+            WHERE conname = 'fk_comments_parent_comment'
+        ) THEN
+            ALTER TABLE comments
+                ADD CONSTRAINT fk_comments_parent_comment
+                    FOREIGN KEY (parent_comment_id) REFERENCES comments(id) ON DELETE CASCADE;
+        END IF;
+
+        IF NOT EXISTS (
+            SELECT 1
+            FROM pg_indexes
+            WHERE indexname = 'idx_comments_parent_comment_id'
+        ) THEN
+            CREATE INDEX idx_comments_parent_comment_id ON comments(parent_comment_id);
+        END IF;
     END IF;
 END
 $$;
