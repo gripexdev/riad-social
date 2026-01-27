@@ -11,6 +11,9 @@
           <button class="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:border-ink/40" *ngIf="!isOwnProfile && authService.isAuthenticated()" type="button" (click)="onFollowToggle()">
             {{ profile.isFollowing ? 'Unfollow' : 'Follow' }}
           </button>
+          <button class="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:border-ink/40" *ngIf="!isOwnProfile && authService.isAuthenticated()" type="button" (click)="startMessage()">
+            Message
+          </button>
           <button class="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:border-ink/40" *ngIf="isOwnProfile && !isEditing" type="button" (click)="startEdit()">
             Edit profile
           </button>

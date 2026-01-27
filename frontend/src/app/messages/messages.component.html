@@ -1,0 +1,361 @@
+<div class="messages-shell">
+  <div class="messages-frame">
+    <aside class="messages-sidebar">
+      <div class="messages-sidebar__top">
+        <div class="sidebar-account">
+          <div class="sidebar-account__name">
+            <span class="sidebar-account__label">{{ currentUsername || 'Messages' }}</span>
+            <span class="material-icons">keyboard_arrow_down</span>
+          </div>
+          <button class="icon-button" type="button" (click)="startNewMessage()">
+            <span class="material-icons">edit</span>
+          </button>
+        </div>
+
+        <label class="messages-search">
+          <span class="material-icons">search</span>
+          <input type="text" placeholder="Search" aria-label="Search conversations" />
+        </label>
+
+        <div class="notes-strip">
+          <div class="notes-title">Notes</div>
+          <div class="notes-row">
+            <div class="note-card">
+              <div class="note-avatar note-avatar--me">
+                <span>{{ currentUsername ? (currentUsername[0] | uppercase) : 'U' }}</span>
+              </div>
+              <div class="note-label">Your note</div>
+            </div>
+            <ng-container *ngFor="let conversation of conversations | slice:0:6">
+              <div class="note-card">
+                <div class="note-avatar">
+                  <img *ngIf="conversation.participantProfilePictureUrl; else noteInitial" class="note-image" [src]="conversation.participantProfilePictureUrl" [alt]="conversation.participantUsername + ' avatar'">
+                  <ng-template #noteInitial>{{ conversation.participantUsername[0] | uppercase }}</ng-template>
+                </div>
+                <div class="note-label">{{ conversation.participantUsername }}</div>
+              </div>
+            </ng-container>
+          </div>
+        </div>
+      </div>
+
+      <div class="messages-sidebar__list">
+        <div class="messages-list-header">
+          <h3>Messages</h3>
+          <button type="button" class="messages-list-action">Requests</button>
+        </div>
+
+        <div class="conversation-list">
+          <div *ngIf="isLoadingConversations" class="list-state">
+            Loading conversations...
+          </div>
+          <div *ngIf="errorMessage" class="list-state list-state--error">
+            {{ errorMessage }}
+          </div>
+          <div *ngIf="!isLoadingConversations && !errorMessage && conversations.length === 0" class="list-state">
+            No conversations yet. Start a new message.
+          </div>
+
+          <button
+            *ngFor="let conversation of conversations; trackBy: trackByConversationId"
+            type="button"
+            class="conversation-item"
+            [class.is-active]="selectedConversationId === conversation.id"
+            (click)="selectConversation(conversation)"
+            [attr.aria-pressed]="selectedConversationId === conversation.id"
+          >
+            <div class="conversation-avatar">
+              <img *ngIf="conversation.participantProfilePictureUrl; else participantInitial" class="conversation-image" [src]="conversation.participantProfilePictureUrl" [alt]="conversation.participantUsername + ' avatar'">
+              <ng-template #participantInitial>{{ conversation.participantUsername[0] | uppercase }}</ng-template>
+            </div>
+            <div class="conversation-content">
+              <div class="conversation-title">
+                <span class="conversation-name">{{ conversation.participantUsername }}</span>
+              </div>
+              <div class="conversation-preview">
+                <span class="conversation-preview__text">{{ getConversationPreview(conversation) }}</span>
+                <span *ngIf="conversation.lastMessageAt" class="conversation-preview__dot">&middot;</span>
+                <span *ngIf="conversation.lastMessageAt" class="conversation-preview__time">{{ formatRelativeTime(conversation.lastMessageAt) }}</span>
+              </div>
+            </div>
+            <span *ngIf="conversation.unreadCount > 0" class="conversation-unread"></span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <section class="messages-thread">
+      <ng-container *ngIf="selectedConversation; else emptyHeader">
+        <header class="thread-header">
+          <div class="thread-user">
+            <div class="thread-avatar">
+              <img *ngIf="selectedConversation.participantProfilePictureUrl; else selectedInitial" class="thread-image" [src]="selectedConversation.participantProfilePictureUrl" [alt]="selectedConversation.participantUsername + ' avatar'">
+              <ng-template #selectedInitial>{{ selectedConversation.participantUsername[0] | uppercase }}</ng-template>
+            </div>
+            <div>
+              <div class="thread-name">{{ selectedConversation.participantUsername }}</div>
+              <div class="thread-subtitle">{{ selectedConversation.participantFullName || ' ' }}</div>
+            </div>
+          </div>
+          <a class="thread-action" [routerLink]="['/users', selectedConversation.participantUsername]">
+            <span class="material-icons">info</span>
+          </a>
+        </header>
+      </ng-container>
+      <ng-template #emptyHeader>
+        <header class="thread-header thread-header--empty"></header>
+      </ng-template>
+
+      <div class="thread-body message-scroll" #messageScroll>
+        <ng-container *ngIf="selectedConversationId; else emptyState">
+          <div *ngIf="isLoadingMessages" class="thread-state">
+            Loading messages...
+          </div>
+          <div *ngIf="messageLoadError" class="thread-state thread-state--error">
+            {{ messageLoadError }}
+          </div>
+          <div *ngIf="!isLoadingMessages && !messageLoadError && messages.length === 0" class="thread-state">
+            No messages yet. Say hello.
+          </div>
+
+          <div *ngFor="let message of messages; trackBy: trackByMessageId" class="message-row" [class.is-outgoing]="isOutgoing(message)">
+            <div class="message-bubble">
+              <div *ngIf="message.attachments?.length" class="message-attachments">
+                <div
+                  *ngFor="let attachment of message.attachments; trackBy: trackByAttachmentId"
+                  class="message-attachment"
+                  [ngClass]="getAttachmentStatusClass(attachment)"
+                >
+                  <div *ngIf="attachment.status !== 'READY'" class="attachment-state">
+                    <span class="attachment-state__label">{{ getAttachmentLabel(attachment) }}</span>
+                    <span
+                      *ngIf="attachment.status === 'UPLOADING' && getAttachmentProgress(attachment.id) !== null"
+                      class="attachment-state__progress"
+                    >
+                      {{ getAttachmentProgress(attachment.id) }}%
+                    </span>
+                  </div>
+                  <ng-container *ngIf="attachment.status === 'READY'">
+                    <ng-container [ngSwitch]="attachment.type">
+                      <ng-container *ngSwitchCase="'IMAGE'">
+                        <button class="attachment-media attachment-media--image" type="button" (click)="openMediaViewer(attachment)">
+                          <img
+                            class="attachment-image"
+                            [src]="attachment.thumbnailUrl || attachment.url"
+                            [alt]="attachment.altText || attachment.originalFilename || 'Image attachment'"
+                          />
+                        </button>
+                        <div *ngIf="attachment.altText" class="attachment-caption">{{ attachment.altText }}</div>
+                      </ng-container>
+                      <ng-container *ngSwitchCase="'VIDEO'">
+                        <button class="attachment-media attachment-media--video" type="button" (click)="openMediaViewer(attachment)">
+                          <span class="material-icons">play_circle</span>
+                          <span class="attachment-video__label">Play video</span>
+                        </button>
+                      </ng-container>
+                      <ng-container *ngSwitchCase="'DOCUMENT'">
+                        <a
+                          class="attachment-doc"
+                          [href]="attachment.url"
+                          target="_blank"
+                          rel="noopener"
+                        >
+                          <span class="material-icons">description</span>
+                          <div>
+                            <div class="attachment-doc__name">{{ attachment.originalFilename || 'Document' }}</div>
+                            <div class="attachment-doc__meta">{{ formatFileSize(attachment.sizeBytes) }}</div>
+                          </div>
+                        </a>
+                      </ng-container>
+                    </ng-container>
+                  </ng-container>
+                </div>
+              </div>
+              <div *ngIf="message.content" class="message-content">{{ message.content }}</div>
+              <div class="message-time">{{ formatMessageTime(message.createdAt) }}</div>
+            </div>
+          </div>
+          <div *ngIf="showTypingIndicator" class="message-row">
+            <div class="message-bubble message-bubble--typing" aria-label="Typing">
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+            </div>
+          </div>
+        </ng-container>
+
+        <ng-template #emptyState>
+          <div class="thread-empty">
+            <div class="thread-empty__icon">
+              <span class="material-icons">send</span>
+            </div>
+            <h3>Your messages</h3>
+            <p>Send private photos and messages to a friend or group.</p>
+            <button class="thread-empty__button" type="button" (click)="startNewMessage()">Send message</button>
+          </div>
+        </ng-template>
+      </div>
+
+      <div class="thread-composer" *ngIf="selectedConversationId || isComposingNew">
+        <div *ngIf="!selectedConversationId" class="composer-recipient">
+          <label>To</label>
+          <input
+            type="text"
+            [formControl]="recipientControl"
+            placeholder="username"
+            aria-label="Recipient username"
+          />
+        </div>
+        <div class="composer-field">
+          <label>Message</label>
+          <textarea
+            rows="2"
+            [formControl]="messageControl"
+            (keydown)="onMessageKeydown($event)"
+            (input)="onMessageInput()"
+            (blur)="onMessageBlur()"
+            placeholder="Write a message..."
+          ></textarea>
+        </div>
+        <div class="composer-tools">
+          <button class="composer-attach" type="button" (click)="triggerFilePicker()">
+            <span class="material-icons">attach_file</span>
+            Attach
+          </button>
+          <label class="composer-expire">
+            <input
+              type="checkbox"
+              [checked]="expireAttachments"
+              (change)="expireAttachments = $any($event.target).checked"
+            />
+            <span>Expire media in 24h</span>
+          </label>
+          <input
+            #fileInput
+            type="file"
+            multiple
+            accept="image/*,video/*,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            (change)="onFilesSelected($event)"
+          />
+        </div>
+        <div *ngIf="attachmentItems.length > 0" class="composer-attachments">
+          <div
+            *ngFor="let attachment of attachmentItems; trackBy: trackByAttachmentItemId"
+            class="composer-attachment"
+            [class.is-uploading]="attachment.status === 'UPLOADING' || attachment.status === 'FINALIZING'"
+            [class.is-failed]="attachment.status === 'FAILED'"
+          >
+            <div class="attachment-thumb">
+              <img
+                *ngIf="attachment.type === 'IMAGE' && attachment.previewUrl"
+                [src]="attachment.previewUrl"
+                [alt]="attachment.altText || attachment.displayName"
+              />
+              <video
+                *ngIf="attachment.type === 'VIDEO' && attachment.previewUrl"
+                [src]="attachment.previewUrl"
+                muted
+                preload="metadata"
+                playsinline
+              ></video>
+              <span *ngIf="attachment.type === 'DOCUMENT'" class="material-icons">description</span>
+              <div *ngIf="attachment.status === 'UPLOADING' || attachment.status === 'FINALIZING'" class="attachment-progress">
+                <div class="attachment-progress__bar" [style.width.%]="attachment.progress"></div>
+              </div>
+            </div>
+            <div class="attachment-info">
+              <div class="attachment-name">{{ attachment.displayName }}</div>
+              <div class="attachment-meta">
+                {{ formatFileSize(attachment.sizeBytes) }}
+                <span *ngIf="attachment.wasCompressed" class="attachment-compressed">compressed</span>
+                <span *ngIf="attachment.status === 'FINALIZING'" class="attachment-status">processing</span>
+                <span *ngIf="attachment.status === 'FAILED'" class="attachment-status">failed</span>
+              </div>
+              <div *ngIf="attachment.type === 'IMAGE' && attachment.status === 'DRAFT'" class="attachment-alt">
+                <input
+                  type="text"
+                  [value]="attachment.altText"
+                  (input)="updateAltText(attachment.id, $event)"
+                  placeholder="Alt text (optional)"
+                  aria-label="Alt text"
+                  [attr.maxlength]="maxAltTextLength"
+                />
+              </div>
+              <div *ngIf="attachment.error" class="attachment-error">{{ attachment.error }}</div>
+            </div>
+            <div class="attachment-actions">
+              <button
+                *ngIf="attachment.status === 'DRAFT'"
+                class="attachment-remove"
+                type="button"
+                (click)="removeAttachment(attachment.id)"
+              >
+                <span class="material-icons">close</span>
+              </button>
+              <button
+                *ngIf="attachment.status === 'UPLOADING' || attachment.status === 'FINALIZING'"
+                class="attachment-cancel"
+                type="button"
+                (click)="cancelUpload(attachment.id)"
+              >
+                Cancel
+              </button>
+              <button
+                *ngIf="attachment.status === 'FAILED'"
+                class="attachment-retry"
+                type="button"
+                (click)="retryUpload(attachment.id)"
+              >
+                Retry
+              </button>
+              <button
+                *ngIf="attachment.status === 'FAILED'"
+                class="attachment-remove"
+                type="button"
+                (click)="removeAttachment(attachment.id)"
+              >
+                <span class="material-icons">close</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="composer-actions">
+          <span class="composer-count">{{ messageLength }} / {{ maxMessageLength }}</span>
+          <button
+            class="composer-send"
+            type="button"
+            [disabled]="!canSend()"
+            (click)="sendMessage()"
+          >
+            {{ isSending ? 'Sending...' : 'Send' }}
+          </button>
+        </div>
+        <div *ngIf="sendError" class="composer-error">
+          {{ sendError }}
+        </div>
+      </div>
+
+      <div *ngIf="mediaViewer" class="media-viewer" (click)="closeMediaViewer()">
+        <div class="media-viewer__content" (click)="$event.stopPropagation()">
+          <button class="media-viewer__close" type="button" (click)="closeMediaViewer()">
+            <span class="material-icons">close</span>
+          </button>
+          <img
+            *ngIf="mediaViewer.type === 'IMAGE'"
+            class="media-viewer__image"
+            [src]="mediaViewer.url"
+            [alt]="mediaViewer.altText || 'Image attachment'"
+          />
+          <video
+            *ngIf="mediaViewer.type === 'VIDEO'"
+            class="media-viewer__video"
+            [src]="mediaViewer.url"
+            controls
+            playsinline
+          ></video>
+          <div *ngIf="mediaViewer.altText" class="media-viewer__caption">{{ mediaViewer.altText }}</div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

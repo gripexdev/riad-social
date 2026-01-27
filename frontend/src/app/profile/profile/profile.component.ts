@@ -91,6 +91,13 @@ export class ProfileComponent implements OnInit, OnDestroy {
     }
   }
 
+  startMessage(): void {
+    if (!this.profile) {
+      return;
+    }
+    this.router.navigate(['/messages'], { queryParams: { recipient: this.profile.username } });
+  }
+
   startEdit(): void {
     if (!this.profile) return;
     this.isEditing = true;

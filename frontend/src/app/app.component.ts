@@ -1,4 +1,4 @@
-import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { Component, HostBinding, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from './auth/auth.service';
 import { CommonModule } from '@angular/common';
@@ -16,6 +16,10 @@ import { filter, takeUntil } from 'rxjs/operators';
 })
 export class AppComponent implements OnInit, OnDestroy {
   title = 'riad';
+  @HostBinding('class.messages-route') isMessagesRoute = false;
+  @HostBinding('class.notifications-open') get notificationsOpenClass(): boolean {
+    return this.notificationsOpen;
+  }
   notificationsOpen = false;
   notificationsLoading = false;
   notificationsError: string | null = null;
@@ -37,6 +41,7 @@ export class AppComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.closeNotifications();
     this.syncUnreadPolling();
+    this.updateRouteState(this.router.url);
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -45,6 +50,7 @@ export class AppComponent implements OnInit, OnDestroy {
       .subscribe(() => {
         this.closeNotifications();
         this.syncUnreadPolling();
+        this.updateRouteState(this.router.url);
       });
   }
 
@@ -254,6 +260,10 @@ export class AppComponent implements OnInit, OnDestroy {
     }
     window.clearInterval(this.unreadPollId);
     this.unreadPollId = null;
+  }
+
+  private updateRouteState(url: string): void {
+    this.isMessagesRoute = url.startsWith('/messages');
   }
 
   ngOnDestroy(): void {

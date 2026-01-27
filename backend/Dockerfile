@@ -8,7 +8,8 @@ COPY src src
 RUN mvn package -DskipTests
 
 # Package stage
-FROM eclipse-temurin:17-jdk-focal
+# Use a locally-available base image to support offline Docker builds.
+FROM maven:3.8-openjdk-17
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8080
