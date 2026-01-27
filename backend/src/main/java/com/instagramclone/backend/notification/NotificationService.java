@@ -77,6 +77,25 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
+    @CacheEvict(
+            cacheNames = "notificationUnreadCount",
+            key = "#recipient.username",
+            condition = "#recipient != null"
+    )
+    public void createCommentNotification(User actor, Post post, Comment comment, User recipient) {
+        if (actor == null || post == null || comment == null || recipient == null) {
+            return;
+        }
+        if (recipient.getUsername().equals(actor.getUsername())) {
+            return;
+        }
+        Notification notification = new Notification(recipient, actor, NotificationType.COMMENT);
+        notification.setPostId(post.getId());
+        notification.setPostImageUrl(post.getImageUrl());
+        notification.setCommentPreview(buildCommentPreview(comment.getContent()));
+        notificationRepository.save(notification);
+    }
+
     @Transactional(readOnly = true)
     public List<NotificationResponse> getNotificationsForUser(String username) {
         User recipient = userRepository.findByUsername(username)

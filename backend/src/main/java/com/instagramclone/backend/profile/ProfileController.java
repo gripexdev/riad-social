@@ -1,5 +1,6 @@
 package com.instagramclone.backend.profile;
 
+import com.instagramclone.backend.post.CommentMapper;
 import com.instagramclone.backend.post.CommentResponse;
 import com.instagramclone.backend.post.Post;
 import com.instagramclone.backend.post.PostResponse;
@@ -156,9 +157,7 @@ public class ProfileController {
         boolean likedByCurrentUser = post.getLikedBy().stream()
                 .anyMatch(user -> user.getUsername().equals(currentUsername));
 
-        List<CommentResponse> commentResponses = post.getComments().stream()
-                .map(comment -> new CommentResponse(comment.getId(), comment.getContent(), comment.getUser().getUsername(), comment.getCreatedAt()))
-                .collect(Collectors.toList());
+        List<CommentResponse> commentResponses = CommentMapper.toThreadedResponses(post.getComments());
 
         return new PostResponse(
                 post.getId(),

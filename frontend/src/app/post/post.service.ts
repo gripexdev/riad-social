@@ -6,6 +6,8 @@ export interface CommentResponse {
   content: string;
   username: string;
   createdAt: string;
+  parentId?: number | null;
+  replies?: CommentResponse[];
 }
 
 export interface Post {
@@ -48,8 +50,8 @@ export class PostService {
     return this.http.post<Post>(`${this.apiUrl}/${postId}/like`, {});
   }
 
-  addComment(postId: number, content: string): Observable<CommentResponse> {
-    const commentRequest = { content: content };
+  addComment(postId: number, content: string, parentCommentId?: number | null): Observable<CommentResponse> {
+    const commentRequest = { content: content, parentCommentId: parentCommentId ?? null };
     return this.http.post<CommentResponse>(`${this.apiUrl}/${postId}/comment`, commentRequest);
   }
 

@@ -44,6 +44,10 @@ class PostControllerTest {
         comment.setId(7L);
         post.getComments().add(comment);
 
+        Comment reply = new Comment("reply", owner, post, comment);
+        reply.setId(8L);
+        post.getComments().add(reply);
+
         when(postService.getExplorePosts()).thenReturn(List.of(post));
 
         ResponseEntity<List<PostResponse>> response = controller.getExplorePosts(principal);
@@ -53,5 +57,6 @@ class PostControllerTest {
         PostResponse postResponse = response.getBody().get(0);
         assertTrue(postResponse.isLikedByCurrentUser());
         assertEquals(1, postResponse.getComments().size());
+        assertEquals(1, postResponse.getComments().get(0).getReplies().size());
     }
 }

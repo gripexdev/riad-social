@@ -64,8 +64,40 @@
   <section *ngIf="showComments" class="border-t border-line bg-cream/70 px-5 py-4">
     <div class="flex max-h-44 flex-col gap-2 overflow-y-auto">
       <div *ngFor="let comment of post.comments" class="text-sm text-ink">
-        <a class="font-semibold" [routerLink]="['/users', comment.username]">{{ comment.username }}</a>
-        <span class="ml-2 text-muted">{{ comment.content }}</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <a class="font-semibold" [routerLink]="['/users', comment.username]">{{ comment.username }}</a>
+          <span class="text-muted">{{ comment.content }}</span>
+        </div>
+        <div class="mt-1 flex items-center gap-3 text-[11px] uppercase tracking-[0.18em] text-muted">
+          <button class="transition hover:text-ink" type="button" (click)="startReply(comment)">Reply</button>
+          <span *ngIf="comment.replies?.length">{{ comment.replies.length }} replies</span>
+        </div>
+
+        <div *ngIf="comment.replies?.length" class="mt-2 flex flex-col gap-2 border-l border-line/70 pl-4">
+          <div *ngFor="let reply of comment.replies" class="text-xs text-ink">
+            <a class="font-semibold" [routerLink]="['/users', reply.username]">{{ reply.username }}</a>
+            <span class="ml-2 text-muted">{{ reply.content }}</span>
+          </div>
+        </div>
+
+        <form *ngIf="activeReplyCommentId === comment.id" [formGroup]="replyForm" (ngSubmit)="addReply(comment)" class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input class="w-full flex-1 rounded-2xl border border-line bg-white px-4 py-2 text-xs text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+                 formControlName="reply"
+                 [placeholder]="replyTargetUsername ? 'Reply to @' + replyTargetUsername + '...' : 'Write a reply...'"
+                 required>
+          <div class="flex items-center gap-2">
+            <button class="rounded-full bg-gradient-to-r from-accent to-accent-strong px-4 py-2 text-xs font-semibold text-white shadow-glow transition hover:opacity-90"
+                    type="submit"
+                    [disabled]="!replyForm.valid">
+              Reply
+            </button>
+            <button class="rounded-full border border-line px-4 py-2 text-xs font-semibold text-ink transition hover:border-ink/40"
+                    type="button"
+                    (click)="cancelReply()">
+              Cancel
+            </button>
+          </div>
+        </form>
       </div>
     </div>
     <form [formGroup]="commentForm" (ngSubmit)="addComment()" class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">

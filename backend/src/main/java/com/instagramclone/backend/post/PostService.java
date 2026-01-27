@@ -83,14 +83,39 @@ public class PostService {
     }
 
     public Comment addComment(Long postId, String content, String commenterUsername) {
+        return addComment(postId, content, commenterUsername, null);
+    }
+
+    public Comment addComment(Long postId, String content, String commenterUsername, Long parentCommentId) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("Post not found with id: " + postId));
         User commenter = userRepository.findByUsername(commenterUsername)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with username: " + commenterUsername));
 
-        Comment comment = new Comment(content, commenter, post);
+        Comment parentComment = null;
+        if (parentCommentId != null) {
+            parentComment = commentRepository.findById(parentCommentId)
+                    .orElseThrow(() -> new IllegalArgumentException("Comment not found with id: " + parentCommentId));
+            if (parentComment.getPost() == null || !parentComment.getPost().getId().equals(postId)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Reply must target a comment on the same post.");
+            }
+            if (parentComment.getParentComment() != null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Replies can only target top-level comments.");
+            }
+        }
+
+        Comment comment = new Comment(content, commenter, post, parentComment);
         Comment savedComment = commentRepository.save(comment);
-        notificationService.createCommentNotification(commenter, post, savedComment);
+        if (parentComment != null && parentComment.getUser() != null) {
+            notificationService.createCommentNotification(commenter, post, savedComment, parentComment.getUser());
+            if (post.getUser() != null
+                    && !post.getUser().getUsername().equals(commenter.getUsername())
+                    && !post.getUser().getUsername().equals(parentComment.getUser().getUsername())) {
+                notificationService.createCommentNotification(commenter, post, savedComment);
+            }
+        } else {
+            notificationService.createCommentNotification(commenter, post, savedComment);
+        }
         return savedComment;
     }
 

@@ -82,11 +82,33 @@ class PostServiceTest {
         when(userRepository.findByUsername("commenter")).thenReturn(Optional.of(commenter));
         when(commentRepository.save(any(Comment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Comment saved = postService.addComment(2L, "hello", "commenter");
+        Comment saved = postService.addComment(2L, "hello", "commenter", null);
 
         assertEquals("hello", saved.getContent());
         assertEquals(commenter, saved.getUser());
         verify(notificationService).createCommentNotification(commenter, post, saved);
+    }
+
+    @Test
+    void addReply_savesAndNotifiesParent() {
+        User owner = buildUser("owner");
+        User commenter = buildUser("commenter");
+        User parentAuthor = buildUser("parent");
+        Post post = new Post("image", "caption", owner);
+        post.setId(9L);
+
+        Comment parent = new Comment("parent", parentAuthor, post);
+        parent.setId(5L);
+
+        when(postRepository.findById(9L)).thenReturn(Optional.of(post));
+        when(userRepository.findByUsername("commenter")).thenReturn(Optional.of(commenter));
+        when(commentRepository.findById(5L)).thenReturn(Optional.of(parent));
+        when(commentRepository.save(any(Comment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Comment saved = postService.addComment(9L, "reply", "commenter", 5L);
+
+        assertEquals(parent, saved.getParentComment());
+        verify(notificationService).createCommentNotification(commenter, post, saved, parentAuthor);
     }
 
     private User buildUser(String username) {

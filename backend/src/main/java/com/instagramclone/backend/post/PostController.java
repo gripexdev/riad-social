@@ -93,10 +93,19 @@ public class PostController {
     }
 
     @PostMapping("/posts/{id}/comment")
-    public ResponseEntity<Comment> addComment(@PathVariable Long id, @RequestBody CommentRequest commentRequest, Principal principal) {
+    public ResponseEntity<CommentResponse> addComment(@PathVariable Long id, @RequestBody CommentRequest commentRequest, Principal principal) {
         String commenterUsername = principal.getName();
-        Comment newComment = postService.addComment(id, commentRequest.getContent(), commenterUsername);
-        return ResponseEntity.ok(newComment);
+        Comment newComment = postService.addComment(id, commentRequest.getContent(), commenterUsername, commentRequest.getParentCommentId());
+        Long parentId = newComment.getParentComment() == null ? null : newComment.getParentComment().getId();
+        CommentResponse response = new CommentResponse(
+                newComment.getId(),
+                newComment.getContent(),
+                newComment.getUser().getUsername(),
+                newComment.getCreatedAt(),
+                parentId,
+                List.of()
+        );
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/posts/{id}")
@@ -139,9 +148,7 @@ public class PostController {
                 .anyMatch(user -> user.getUsername().equals(currentUsername));
         
         // Convert Comments to CommentResponse
-        List<CommentResponse> commentResponses = post.getComments().stream()
-                .map(comment -> new CommentResponse(comment.getId(), comment.getContent(), comment.getUser().getUsername(), comment.getCreatedAt()))
-                .collect(Collectors.toList());
+        List<CommentResponse> commentResponses = CommentMapper.toThreadedResponses(post.getComments());
 
         return new PostResponse(
                 post.getId(),

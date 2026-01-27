@@ -25,6 +25,7 @@ export class PostCardComponent implements OnInit, OnDestroy {
   @Input() canDelete: boolean = false;
   @Output() postDeleted = new EventEmitter<number>();
   commentForm!: FormGroup;
+  replyForm!: FormGroup;
   editForm!: FormGroup;
   showComments: boolean = false;
   currentUsername: string | null = null;
@@ -33,6 +34,8 @@ export class PostCardComponent implements OnInit, OnDestroy {
   isSaving: boolean = false;
   errorMessage: string | null = null;
   showDeleteConfirm: boolean = false;
+  activeReplyCommentId: number | null = null;
+  replyTargetUsername: string | null = null;
   private readonly destroy$ = new Subject<void>();
 
   constructor(
@@ -46,6 +49,9 @@ export class PostCardComponent implements OnInit, OnDestroy {
     this.currentUsername = this.authService.getUsername();
     this.commentForm = this.fb.group({
       comment: ['', Validators.required]
+    });
+    this.replyForm = this.fb.group({
+      reply: ['', Validators.required]
     });
     this.editForm = this.fb.group({
       caption: ['']
@@ -80,8 +86,10 @@ export class PostCardComponent implements OnInit, OnDestroy {
           const newComment: CommentResponse = {
             id: newCommentBackend.id,
             content: newCommentBackend.content,
-            username: this.currentUsername!,
-            createdAt: new Date().toISOString()
+            username: newCommentBackend.username || this.currentUsername!,
+            createdAt: newCommentBackend.createdAt || new Date().toISOString(),
+            parentId: newCommentBackend.parentId ?? null,
+            replies: newCommentBackend.replies ?? []
           };
           this.post.comments.push(newComment);
           this.commentForm.reset();
@@ -89,6 +97,46 @@ export class PostCardComponent implements OnInit, OnDestroy {
         error: (err) => console.error('Error adding comment', err)
       });
     }
+  }
+
+  startReply(comment: CommentResponse): void {
+    if (!this.currentUsername) {
+      return;
+    }
+    this.activeReplyCommentId = comment.id;
+    this.replyTargetUsername = comment.username;
+    this.replyForm.reset();
+  }
+
+  cancelReply(): void {
+    this.activeReplyCommentId = null;
+    this.replyTargetUsername = null;
+    this.replyForm.reset();
+  }
+
+  addReply(comment: CommentResponse): void {
+    if (!this.currentUsername || !this.replyForm.valid) {
+      return;
+    }
+    const content = this.replyForm.value.reply;
+    this.postService.addComment(this.post.id, content, comment.id).subscribe({
+      next: (replyBackend) => {
+        const reply: CommentResponse = {
+          id: replyBackend.id,
+          content: replyBackend.content,
+          username: replyBackend.username || this.currentUsername!,
+          createdAt: replyBackend.createdAt || new Date().toISOString(),
+          parentId: replyBackend.parentId ?? comment.id,
+          replies: []
+        };
+        if (!comment.replies) {
+          comment.replies = [];
+        }
+        comment.replies.push(reply);
+        this.cancelReply();
+      },
+      error: (err) => console.error('Error adding reply', err)
+    });
   }
 
   toggleComments(): void {
