@@ -20,7 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/messages/attachments")
 public class MessageAttachmentController {
 
-    private static final long DEFAULT_CHUNK_SIZE = 1024 * 1024;
+    private static final long DEFAULT_CHUNK_SIZE = 1024L * 1024;
 
     private final MessageAttachmentService attachmentService;
     private final MessageAttachmentRepository attachmentRepository;
