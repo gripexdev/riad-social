@@ -1,8 +1,17 @@
-ALTER TABLE comments
+ALTER TABLE IF EXISTS comments
     ADD COLUMN IF NOT EXISTS parent_comment_id BIGINT;
 
-ALTER TABLE comments
-    ADD CONSTRAINT IF NOT EXISTS fk_comments_parent_comment
-        FOREIGN KEY (parent_comment_id) REFERENCES comments(id) ON DELETE CASCADE;
-
-CREATE INDEX IF NOT EXISTS idx_comments_parent_comment_id ON comments(parent_comment_id);
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_name = 'comments'
+    ) THEN
+        ALTER TABLE comments
+            ADD CONSTRAINT IF NOT EXISTS fk_comments_parent_comment
+                FOREIGN KEY (parent_comment_id) REFERENCES comments(id) ON DELETE CASCADE;
+        CREATE INDEX IF NOT EXISTS idx_comments_parent_comment_id ON comments(parent_comment_id);
+    END IF;
+END
+$$;
