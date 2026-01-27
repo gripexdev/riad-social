@@ -82,6 +82,24 @@ public class PostService {
         return postRepository.save(post);
     }
 
+    @Transactional
+    public void deleteComment(Long postId, Long commentId, String username) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found with id: " + postId));
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new IllegalArgumentException("Comment not found with id: " + commentId));
+        if (comment.getPost() == null || !comment.getPost().getId().equals(post.getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Comment does not belong to this post.");
+        }
+        if (comment.getUser() == null || !comment.getUser().getUsername().equals(username)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own reply.");
+        }
+        if (comment.getParentComment() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only replies can be deleted.");
+        }
+        commentRepository.delete(comment);
+    }
+
     public Comment addComment(Long postId, String content, String commenterUsername) {
         return addComment(postId, content, commenterUsername, null);
     }

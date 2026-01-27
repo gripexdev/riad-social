@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doNothing;
 
 @ExtendWith(MockitoExtension.class)
 class PostServiceTest {
@@ -109,6 +110,27 @@ class PostServiceTest {
 
         assertEquals(parent, saved.getParentComment());
         verify(notificationService).createCommentNotification(commenter, post, saved, parentAuthor);
+    }
+
+    @Test
+    void deleteReply_removesOwnReply() {
+        User owner = buildUser("owner");
+        User commenter = buildUser("commenter");
+        Post post = new Post("image", "caption", owner);
+        post.setId(4L);
+
+        Comment parent = new Comment("parent", owner, post);
+        parent.setId(10L);
+        Comment reply = new Comment("reply", commenter, post, parent);
+        reply.setId(11L);
+
+        when(postRepository.findById(4L)).thenReturn(Optional.of(post));
+        when(commentRepository.findById(11L)).thenReturn(Optional.of(reply));
+        doNothing().when(commentRepository).delete(reply);
+
+        postService.deleteComment(4L, 11L, "commenter");
+
+        verify(commentRepository).delete(reply);
     }
 
     private User buildUser(String username) {

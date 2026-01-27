@@ -74,9 +74,15 @@
         </div>
 
         <div *ngIf="comment.replies?.length" class="mt-2 flex flex-col gap-2 border-l border-line/70 pl-4">
-          <div *ngFor="let reply of comment.replies" class="text-xs text-ink">
+          <div *ngFor="let reply of comment.replies" class="flex flex-wrap items-center gap-2 text-xs text-ink">
             <a class="font-semibold" [routerLink]="['/users', reply.username]">{{ reply.username }}</a>
-            <span class="ml-2 text-muted">{{ reply.content }}</span>
+            <span class="text-muted">{{ reply.content }}</span>
+            <button *ngIf="reply.username === currentUsername"
+                    class="text-[10px] uppercase tracking-[0.2em] text-muted transition hover:text-rose-600"
+                    type="button"
+                    (click)="deleteReply(comment, reply)">
+              Delete
+            </button>
           </div>
         </div>
 

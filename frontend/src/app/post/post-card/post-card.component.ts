@@ -139,6 +139,21 @@ export class PostCardComponent implements OnInit, OnDestroy {
     });
   }
 
+  deleteReply(parentComment: CommentResponse, reply: CommentResponse): void {
+    if (!this.currentUsername || reply.username !== this.currentUsername) {
+      return;
+    }
+    this.postService.deleteComment(this.post.id, reply.id).subscribe({
+      next: () => {
+        if (!parentComment.replies) {
+          return;
+        }
+        parentComment.replies = parentComment.replies.filter((item) => item.id !== reply.id);
+      },
+      error: (err) => console.error('Error deleting reply', err)
+    });
+  }
+
   toggleComments(): void {
     this.showComments = !this.showComments;
   }

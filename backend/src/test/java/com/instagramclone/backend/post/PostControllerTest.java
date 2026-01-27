@@ -9,11 +9,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class PostControllerTest {
@@ -58,5 +60,16 @@ class PostControllerTest {
         assertTrue(postResponse.isLikedByCurrentUser());
         assertEquals(1, postResponse.getComments().size());
         assertEquals(1, postResponse.getComments().get(0).getReplies().size());
+    }
+
+    @Test
+    void deleteReply_delegatesToService() {
+        PostController controller = new PostController(postService, storageService);
+        Principal principal = () -> "alice";
+
+        ResponseEntity<Void> response = controller.deleteReply(5L, 9L, principal);
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        verify(postService).deleteComment(5L, 9L, "alice");
     }
 }
