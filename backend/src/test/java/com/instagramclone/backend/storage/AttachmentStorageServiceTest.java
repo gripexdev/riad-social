@@ -11,6 +11,7 @@ import org.junit.jupiter.api.io.TempDir;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AttachmentStorageServiceTest {
@@ -40,6 +41,28 @@ class AttachmentStorageServiceTest {
         assertNotNull(resource);
         assertTrue(resource.exists());
         assertArrayEquals("hello".getBytes(StandardCharsets.UTF_8), resource.getContentAsByteArray());
+    }
+
+    @Test
+    void storePermanent_rejectsPathTraversal() {
+        assertThrows(IllegalArgumentException.class, () ->
+                storageService.storePermanent(new ByteArrayInputStream("data".getBytes(StandardCharsets.UTF_8)), "../escape.txt")
+        );
+    }
+
+    @Test
+    void loadAsResource_missingFileThrows() {
+        assertThrows(RuntimeException.class, () -> storageService.loadAsResource("missing.txt"));
+    }
+
+    @Test
+    void deletePermanent_removesFile() throws Exception {
+        String key = "delete.txt";
+        storageService.storePermanent(new ByteArrayInputStream("bye".getBytes(StandardCharsets.UTF_8)), key);
+
+        storageService.deletePermanent(key);
+
+        assertFalse(Files.exists(tempDir.resolve("attachments").resolve(key)));
     }
 
     @Test
@@ -91,5 +114,21 @@ class AttachmentStorageServiceTest {
         storageService.deleteThumbnail(key);
 
         assertFalse(Files.exists(tempDir.resolve("thumbs").resolve(key)));
+    }
+
+    @Test
+    void storeThumbnail_sanitizesFilename() throws Exception {
+        String key = storageService.storeThumbnail(
+                new ByteArrayInputStream("thumb".getBytes(StandardCharsets.UTF_8)),
+                "../escape.jpg"
+        );
+
+        assertTrue(Files.exists(tempDir.resolve("thumbs").resolve(key)));
+        assertTrue(key.contains("escape"));
+    }
+
+    @Test
+    void loadThumbnailAsResource_missingFileThrows() {
+        assertThrows(RuntimeException.class, () -> storageService.loadThumbnailAsResource("missing-thumb.jpg"));
     }
 }

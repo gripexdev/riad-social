@@ -11,13 +11,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -188,6 +192,72 @@ class MessageServiceTest {
         messageService.sendTypingIndicator("alice", request);
 
         verify(messagingTemplate).convertAndSendToUser(eq("bob"), eq("/queue/typing"), any(TypingEventResponse.class));
+    }
+
+    @Test
+    void getMessagesRejectsNonParticipants() {
+        User alice = buildUser(1L, "alice");
+        User bob = buildUser(2L, "bob");
+        User charlie = buildUser(3L, "charlie");
+        Conversation conversation = new Conversation(alice, bob);
+
+        when(userRepository.findByUsername("charlie")).thenReturn(Optional.of(charlie));
+        when(conversationRepository.findById(1L)).thenReturn(Optional.of(conversation));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+                messageService.getMessages(1L, "charlie")
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+    }
+
+    @Test
+    void createMessageWithAttachments_buildsPreviewForMultipleAttachments() {
+        User alice = buildUser(1L, "alice");
+        User bob = buildUser(2L, "bob");
+        Conversation conversation = new Conversation(alice, bob);
+        when(conversationRepository.findBetweenUsers(alice, bob)).thenReturn(Optional.of(conversation));
+        when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MessageAttachment first = new MessageAttachment();
+        first.setType(AttachmentType.IMAGE);
+        MessageAttachment second = new MessageAttachment();
+        second.setType(AttachmentType.DOCUMENT);
+
+        Message message = messageService.createMessageWithAttachments(alice, bob, "", List.of(first, second));
+
+        assertNotNull(message);
+        assertEquals("2 attachments", conversation.getLastMessagePreview());
+    }
+
+    @Test
+    void createMessageWithAttachments_trimsLongContentPreview() {
+        User alice = buildUser(1L, "alice");
+        User bob = buildUser(2L, "bob");
+        Conversation conversation = new Conversation(alice, bob);
+        when(conversationRepository.findBetweenUsers(alice, bob)).thenReturn(Optional.of(conversation));
+        when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        String content = "a".repeat(200);
+        messageService.createMessageWithAttachments(alice, bob, content, List.of());
+
+        assertTrue(conversation.getLastMessagePreview().endsWith("..."));
+    }
+
+    @Test
+    void toAttachmentResponse_resolvesExpiredStatusAndOmitsUrls() {
+        MessageAttachment attachment = new MessageAttachment();
+        attachment.setStatus(AttachmentStatus.READY);
+        attachment.setExpiresAt(LocalDateTime.now().minusMinutes(5));
+        attachment.setType(AttachmentType.DOCUMENT);
+        attachment.setMimeType("application/pdf");
+        attachment.setMessage(new Message());
+
+        MessageAttachmentResponse response = messageService.toAttachmentResponse(attachment, buildUser(9L, "viewer"));
+
+        assertEquals(AttachmentStatus.EXPIRED, response.getStatus());
+        assertNull(response.getUrl());
+        verify(attachmentTokenService, never()).generateToken(any(Long.class), any(Long.class));
     }
 
     private User buildUser(Long id, String username) {

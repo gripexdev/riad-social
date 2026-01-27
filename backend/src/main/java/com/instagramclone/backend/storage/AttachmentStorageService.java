@@ -124,7 +124,7 @@ public class AttachmentStorageService {
         try {
             Path file = rootLocation.resolve(storageKey);
             Resource resource = new UrlResource(file.toUri());
-            if (resource.exists() || resource.isReadable()) {
+            if (resource.exists() && resource.isReadable()) {
                 return resource;
             }
             throw new RuntimeException("Could not read file: " + storageKey);
@@ -145,7 +145,7 @@ public class AttachmentStorageService {
         try {
             Path file = thumbnailLocation.resolve(storageKey);
             Resource resource = new UrlResource(file.toUri());
-            if (resource.exists() || resource.isReadable()) {
+            if (resource.exists() && resource.isReadable()) {
                 return resource;
             }
             throw new RuntimeException("Could not read thumbnail: " + storageKey);

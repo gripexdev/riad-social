@@ -4,6 +4,7 @@ import com.instagramclone.backend.storage.AttachmentStorageService;
 import com.instagramclone.backend.user.User;
 import java.io.IOException;
 import java.security.Principal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -171,6 +172,51 @@ class MessageAttachmentControllerTest {
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                 controller.downloadAttachment(3L, new HttpHeaders(), null, () -> "alice")
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+    }
+
+    @Test
+    void downloadAttachment_rejectsExpiredTimestamp() throws IOException {
+        MessageAttachment attachment = new MessageAttachment();
+        setAttachmentId(attachment, 6L);
+        attachment.setStatus(AttachmentStatus.READY);
+        attachment.setStorageKey("file.bin");
+        attachment.setExpiresAt(LocalDateTime.now().minusMinutes(1));
+        when(attachmentRepository.findById(6L)).thenReturn(Optional.of(attachment));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+                controller.downloadAttachment(6L, new HttpHeaders(), null, () -> "alice")
+        );
+
+        assertEquals(HttpStatus.GONE, ex.getStatusCode());
+    }
+
+    @Test
+    void downloadThumbnail_rejectsMissingThumbnail() {
+        MessageAttachment attachment = new MessageAttachment();
+        setAttachmentId(attachment, 7L);
+        attachment.setStatus(AttachmentStatus.READY);
+        when(attachmentRepository.findById(7L)).thenReturn(Optional.of(attachment));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+                controller.downloadThumbnail(7L, "token", () -> "alice")
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+    }
+
+    @Test
+    void downloadThumbnail_rejectsNotReady() {
+        MessageAttachment attachment = new MessageAttachment();
+        setAttachmentId(attachment, 8L);
+        attachment.setStatus(AttachmentStatus.UPLOADING);
+        attachment.setThumbnailKey("thumb");
+        when(attachmentRepository.findById(8L)).thenReturn(Optional.of(attachment));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+                controller.downloadThumbnail(8L, "token", () -> "alice")
         );
 
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());

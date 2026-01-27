@@ -114,6 +114,9 @@ class MessageModelsTest {
         assertEquals(AttachmentType.IMAGE, attachmentResponse.getType());
         assertEquals("image/jpeg", attachmentResponse.getMimeType());
         assertEquals("url", attachmentResponse.getUrl());
+        assertEquals("thumb", attachmentResponse.getThumbnailUrl());
+        assertEquals("photo.jpg", attachmentResponse.getOriginalFilename());
+        assertEquals("alt", attachmentResponse.getAltText());
     }
 
     @Test
@@ -147,6 +150,62 @@ class MessageModelsTest {
         );
         assertEquals("alice", response.getSenderUsername());
         assertTrue(response.getIsRead());
+        assertEquals(2L, response.getConversationId());
+        assertEquals("bob", response.getRecipientUsername());
+    }
+
+    @Test
+    void messageAndConversationExposeSetters() {
+        User alice = new User();
+        alice.setId(1L);
+        alice.setUsername("alice");
+        User bob = new User();
+        bob.setId(2L);
+        bob.setUsername("bob");
+
+        Conversation conversation = new Conversation();
+        conversation.setUserOne(alice);
+        conversation.setUserTwo(bob);
+        conversation.setLastMessageSender(alice);
+        conversation.setLastMessagePreview("preview");
+        LocalDateTime now = LocalDateTime.now();
+        conversation.setCreatedAt(now);
+        conversation.setLastMessageAt(now);
+
+        assertEquals("preview", conversation.getLastMessagePreview());
+        assertEquals(alice, conversation.getLastMessageSender());
+        assertEquals(bob, conversation.getUserTwo());
+
+        Message message = new Message();
+        message.setConversation(conversation);
+        message.setSender(alice);
+        message.setRecipient(bob);
+        message.setContent("content");
+        message.setRead(false);
+        message.setReadAt(now);
+
+        assertEquals("content", message.getContent());
+        assertEquals(bob, message.getRecipient());
+        assertEquals(now, message.getReadAt());
+
+        MessageAttachment attachment = new MessageAttachment();
+        attachment.setMessage(message);
+        attachment.setType(AttachmentType.DOCUMENT);
+        attachment.setMimeType("application/pdf");
+        attachment.setSizeBytes(10L);
+        attachment.setChecksum("sum");
+        attachment.setAltText("alt");
+        attachment.setStorageKey("key");
+        attachment.setStorageFilename("file.pdf");
+        attachment.setPublicId("public");
+        attachment.setThumbnailKey("thumb");
+        attachment.setOriginalFilename("file.pdf");
+        attachment.setStatus(AttachmentStatus.READY);
+        attachment.setExpiresAt(now);
+
+        assertEquals("application/pdf", attachment.getMimeType());
+        assertEquals("file.pdf", attachment.getOriginalFilename());
+        assertEquals(AttachmentStatus.READY, attachment.getStatus());
     }
 
     @Test

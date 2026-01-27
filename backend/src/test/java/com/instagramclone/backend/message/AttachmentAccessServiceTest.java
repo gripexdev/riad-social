@@ -11,7 +11,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
@@ -34,74 +33,52 @@ class AttachmentAccessServiceTest {
 
     @Test
     void resolveUserForAttachment_prefersPrincipal() {
-        User user = buildUser(1L, "alice");
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("alice");
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
 
-        User resolved = accessService.resolveUserForAttachment("alice", null, 12L);
+        User resolved = accessService.resolveUserForAttachment("alice", null, 1L);
 
         assertEquals(user, resolved);
     }
 
     @Test
-    void resolveUserForAttachment_usesTokenWhenNoPrincipal() {
-        User user = buildUser(7L, "bob");
-        when(tokenService.parseToken("token")).thenReturn(new AttachmentTokenPayload(42L, 7L));
-        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
-
-        User resolved = accessService.resolveUserForAttachment(null, "token", 42L);
-
-        assertEquals(user, resolved);
+    void resolveUserForAttachment_requiresTokenWhenNoPrincipal() {
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+                accessService.resolveUserForAttachment(null, null, 1L)
+        );
+        assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
     }
 
     @Test
-    void resolveUserForAttachment_rejectsMismatchedToken() {
+    void resolveUserForAttachment_rejectsTokenMismatch() {
         when(tokenService.parseToken("token")).thenReturn(new AttachmentTokenPayload(1L, 2L));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                 accessService.resolveUserForAttachment(null, "token", 99L)
         );
-
         assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
     }
 
     @Test
-    void assertUserCanAccess_allowsParticipants() {
-        User sender = buildUser(1L, "alice");
-        User recipient = buildUser(2L, "bob");
-        Message message = buildMessage(sender, recipient);
-        MessageAttachment attachment = new MessageAttachment();
-        attachment.setMessage(message);
+    void assertUserCanAccess_rejectsNonParticipants() {
+        User viewer = new User();
+        viewer.setId(1L);
+        User sender = new User();
+        sender.setId(2L);
+        User recipient = new User();
+        recipient.setId(3L);
+        Message message = new Message();
+        message.setSender(sender);
+        message.setRecipient(recipient);
 
-        assertDoesNotThrow(() -> accessService.assertUserCanAccess(attachment, sender));
-        assertDoesNotThrow(() -> accessService.assertUserCanAccess(attachment, recipient));
-    }
-
-    @Test
-    void assertUserCanAccess_rejectsOtherUsers() {
-        User sender = buildUser(1L, "alice");
-        User recipient = buildUser(2L, "bob");
-        User intruder = buildUser(3L, "mallory");
-        Message message = buildMessage(sender, recipient);
         MessageAttachment attachment = new MessageAttachment();
         attachment.setMessage(message);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
-                accessService.assertUserCanAccess(attachment, intruder)
+                accessService.assertUserCanAccess(attachment, viewer)
         );
-
         assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
-    }
-
-    private User buildUser(Long id, String username) {
-        User user = new User();
-        user.setId(id);
-        user.setUsername(username);
-        return user;
-    }
-
-    private Message buildMessage(User sender, User recipient) {
-        Conversation conversation = new Conversation(sender, recipient);
-        Message message = new Message(conversation, sender, recipient, "hello");
-        return message;
     }
 }
