@@ -71,6 +71,34 @@ class AttachmentProcessingServiceTest {
         verify(messageService).notifyMessageUpdated(attachment.getMessage());
     }
 
+    @Test
+    void processAttachmentAsync_marksFailedWhenScanFails() {
+        MessageAttachment attachment = baseAttachment();
+        attachment.setType(AttachmentType.DOCUMENT);
+        when(attachmentRepository.findById(101L)).thenReturn(Optional.of(attachment));
+        when(storageService.resolvePermanentPath("file")).thenReturn(Path.of("file"));
+        when(virusScanService.scan(any(Path.class))).thenReturn(new VirusScanResult(VirusScanStatus.FAILED, "fail"));
+
+        processingService.processAttachmentAsync(101L);
+
+        assertEquals(AttachmentStatus.FAILED, attachment.getStatus());
+        verify(storageService).deletePermanent("file");
+        verify(messageService).notifyMessageUpdated(attachment.getMessage());
+    }
+
+    @Test
+    void processAttachmentAsync_expiresAttachments() {
+        MessageAttachment attachment = baseAttachment();
+        attachment.setExpiresAt(java.time.LocalDateTime.now().minusMinutes(1));
+        when(attachmentRepository.findById(102L)).thenReturn(Optional.of(attachment));
+
+        processingService.processAttachmentAsync(102L);
+
+        assertEquals(AttachmentStatus.EXPIRED, attachment.getStatus());
+        verify(storageService).deletePermanent("file");
+        verify(messageService).notifyMessageUpdated(attachment.getMessage());
+    }
+
     private MessageAttachment baseAttachment() {
         MessageAttachment attachment = new MessageAttachment();
         attachment.setStatus(AttachmentStatus.UPLOADING);

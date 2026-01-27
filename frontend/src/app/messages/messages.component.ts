@@ -485,6 +485,13 @@ export class MessagesComponent implements OnInit, OnDestroy {
     this.mediaViewer = null;
   }
 
+  onMediaViewerKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' || event.key === ' ' || event.key === 'Escape') {
+      event.preventDefault();
+      this.closeMediaViewer();
+    }
+  }
+
   formatFileSize(bytes: number): string {
     if (bytes < 1024) {
       return `${bytes} B`;

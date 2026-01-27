@@ -55,6 +55,7 @@ public class WebSocketHandshakeHandler extends DefaultHandshakeHandler {
         if (token == null || token.isBlank()) {
             return null;
         }
+        token = java.net.URLDecoder.decode(token, java.nio.charset.StandardCharsets.UTF_8);
         if (token.startsWith("Bearer ")) {
             return token.substring(7);
         }

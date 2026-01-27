@@ -4,6 +4,7 @@ import com.instagramclone.backend.storage.AttachmentStorageService;
 import com.instagramclone.backend.user.User;
 import java.io.IOException;
 import java.security.Principal;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,7 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpRange;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -91,6 +93,57 @@ class MessageAttachmentControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
+    }
+
+    @Test
+    void downloadAttachment_returnsPartialContentForRange() throws IOException {
+        MessageAttachment attachment = new MessageAttachment();
+        setAttachmentId(attachment, 4L);
+        attachment.setStatus(AttachmentStatus.READY);
+        attachment.setStorageKey("file.bin");
+        attachment.setOriginalFilename("video.mp4");
+        when(attachmentRepository.findById(4L)).thenReturn(Optional.of(attachment));
+        User user = new User();
+        user.setId(1L);
+        when(accessService.resolveUserForAttachment("alice", "token", 4L)).thenReturn(user);
+        doNothing().when(accessService).assertUserCanAccess(attachment, user);
+        when(storageService.loadAsResource("file.bin")).thenReturn(new ByteArrayResource("data".getBytes()));
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setRange(List.of(HttpRange.createByteRange(0, 1)));
+        ResponseEntity<?> response = controller.downloadAttachment(4L, headers, "token", () -> "alice");
+
+        assertEquals(HttpStatus.PARTIAL_CONTENT, response.getStatusCode());
+        assertNotNull(response.getBody());
+    }
+
+    @Test
+    void downloadThumbnail_returnsResource() {
+        MessageAttachment attachment = new MessageAttachment();
+        setAttachmentId(attachment, 5L);
+        attachment.setStatus(AttachmentStatus.READY);
+        attachment.setThumbnailKey("thumb");
+        when(attachmentRepository.findById(5L)).thenReturn(Optional.of(attachment));
+        User user = new User();
+        user.setId(1L);
+        when(accessService.resolveUserForAttachment("alice", "token", 5L)).thenReturn(user);
+        doNothing().when(accessService).assertUserCanAccess(attachment, user);
+        when(storageService.loadThumbnailAsResource("thumb")).thenReturn(new ByteArrayResource("thumb".getBytes()));
+
+        ResponseEntity<?> response = controller.downloadThumbnail(5L, "token", () -> "alice");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+    }
+
+    @Test
+    void cancelUploadDelegatesToService() {
+        doNothing().when(attachmentService).cancelUpload("upload", "alice");
+
+        ResponseEntity<Void> response = controller.cancelUpload("upload", () -> "alice");
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        verify(attachmentService).cancelUpload("upload", "alice");
     }
 
     @Test

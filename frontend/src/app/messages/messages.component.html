@@ -335,8 +335,22 @@
         </div>
       </div>
 
-      <div *ngIf="mediaViewer" class="media-viewer" (click)="closeMediaViewer()">
-        <div class="media-viewer__content" (click)="$event.stopPropagation()">
+      <div
+        *ngIf="mediaViewer"
+        class="media-viewer"
+        role="button"
+        tabindex="0"
+        aria-label="Close media viewer"
+        (click)="closeMediaViewer()"
+        (keydown)="onMediaViewerKeydown($event)"
+      >
+        <div
+          class="media-viewer__content"
+          role="dialog"
+          tabindex="0"
+          (click)="$event.stopPropagation()"
+          (keydown)="$event.stopPropagation()"
+        >
           <button class="media-viewer__close" type="button" (click)="closeMediaViewer()">
             <span class="material-icons">close</span>
           </button>

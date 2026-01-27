@@ -76,4 +76,20 @@ class AttachmentStorageServiceTest {
 
         assertFalse(Files.exists(tempPath));
     }
+
+    @Test
+    void storeAndDeleteThumbnail() throws Exception {
+        String key = storageService.storeThumbnail(
+                new ByteArrayInputStream("thumb".getBytes(StandardCharsets.UTF_8)),
+                "thumb.jpg"
+        );
+
+        var resource = storageService.loadThumbnailAsResource(key);
+        assertNotNull(resource);
+        assertTrue(resource.exists());
+
+        storageService.deleteThumbnail(key);
+
+        assertFalse(Files.exists(tempDir.resolve("thumbs").resolve(key)));
+    }
 }

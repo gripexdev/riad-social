@@ -17,7 +17,7 @@ public class MessageController {
 
     @GetMapping("/conversations")
     public ResponseEntity<List<ConversationResponse>> getConversations(Principal principal) {
-        return ResponseEntity.ok(messageService.getConversations(principal.getName()));
+        return ResponseEntity.ok(messageService.getConversations(requireUsername(principal)));
     }
 
     @GetMapping("/conversations/{conversationId}")
@@ -25,7 +25,7 @@ public class MessageController {
             @PathVariable Long conversationId,
             Principal principal
     ) {
-        return ResponseEntity.ok(messageService.getMessages(conversationId, principal.getName()));
+        return ResponseEntity.ok(messageService.getMessages(conversationId, requireUsername(principal)));
     }
 
     @PutMapping("/conversations/{conversationId}/read")
@@ -33,7 +33,7 @@ public class MessageController {
             @PathVariable Long conversationId,
             Principal principal
     ) {
-        messageService.markConversationRead(conversationId, principal.getName());
+        messageService.markConversationRead(conversationId, requireUsername(principal));
         return ResponseEntity.noContent().build();
     }
 
@@ -42,6 +42,16 @@ public class MessageController {
             @RequestBody SendMessageRequest request,
             Principal principal
     ) {
-        return ResponseEntity.ok(messageService.sendMessage(principal.getName(), request));
+        return ResponseEntity.ok(messageService.sendMessage(requireUsername(principal), request));
+    }
+
+    private String requireUsername(Principal principal) {
+        if (principal == null || principal.getName() == null || principal.getName().isBlank()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED,
+                    "Authentication required."
+            );
+        }
+        return principal.getName();
     }
 }
