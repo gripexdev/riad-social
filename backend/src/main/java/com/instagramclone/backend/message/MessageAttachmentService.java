@@ -66,7 +66,9 @@ public class MessageAttachmentService {
         if (recipientUsername.equalsIgnoreCase(senderUsername)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You cannot message yourself.");
         }
-        validationService.validateNewAttachments(senderUsername, request.getAttachments());
+        List<AttachmentUploadRequest> attachmentRequests = request.getAttachments();
+        validationService.validateNewAttachments(senderUsername, attachmentRequests);
+        attachmentRequests = java.util.Objects.requireNonNull(attachmentRequests, "attachments");
         long expiresInSeconds = request.getExpiresInSeconds() == null ? 0 : request.getExpiresInSeconds();
         if (expiresInSeconds < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Expiration must be positive.");
@@ -85,7 +87,7 @@ public class MessageAttachmentService {
         User recipient = loadUser(recipientUsername);
         List<MessageAttachment> attachments = new ArrayList<>();
         LocalDateTime expiresAt = expiresInSeconds > 0 ? LocalDateTime.now().plusSeconds(expiresInSeconds) : null;
-        for (AttachmentUploadRequest attachmentRequest : request.getAttachments()) {
+        for (AttachmentUploadRequest attachmentRequest : attachmentRequests) {
             validationService.validateAttachmentMetadata(attachmentRequest);
             AttachmentType type = validationService.resolveType(attachmentRequest.getMimeType());
             MessageAttachment attachment = new MessageAttachment();

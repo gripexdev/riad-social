@@ -175,9 +175,8 @@ public class AttachmentStorageService {
         if (!Files.exists(tempDir)) {
             return;
         }
-        try {
-            Files.walk(tempDir)
-                    .sorted((a, b) -> b.compareTo(a))
+        try (java.util.stream.Stream<Path> paths = Files.walk(tempDir)) {
+            paths.sorted((a, b) -> b.compareTo(a))
                     .forEach(path -> {
                         try {
                             Files.deleteIfExists(path);

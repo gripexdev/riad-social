@@ -1,6 +1,5 @@
 import { Injectable, NgZone } from '@angular/core';
 import { Client, IMessage } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
 import { Subject, Observable } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 import { Message } from './message.service';
@@ -34,38 +33,51 @@ export class MessageRealtimeService {
     }
 
     const socketUrl = this.buildSocketUrl(token);
-    this.client = new Client({
-      webSocketFactory: () => new SockJS(socketUrl),
-      connectHeaders: {
-        Authorization: `Bearer ${token}`,
-        token
-      },
-      reconnectDelay: 5000,
-      heartbeatIncoming: 10000,
-      heartbeatOutgoing: 10000
-    });
+    const sockJsFromWindow = typeof window !== 'undefined' ? (window as any).SockJS : undefined;
+    const sockJsLoader = sockJsFromWindow
+      ? Promise.resolve(sockJsFromWindow)
+      : import('sockjs-client').then(({ default: SockJS }) => SockJS);
+    sockJsLoader
+      .then((SockJS) => {
+        if (this.client?.active) {
+          return;
+        }
+        this.client = new Client({
+          webSocketFactory: () => new SockJS(socketUrl),
+          connectHeaders: {
+            Authorization: `Bearer ${token}`,
+            token
+          },
+          reconnectDelay: 5000,
+          heartbeatIncoming: 10000,
+          heartbeatOutgoing: 10000
+        });
 
-    this.client.onConnect = () => {
-      this.client?.subscribe('/user/queue/messages', (message) => {
-        this.handleMessage(message);
+        this.client.onConnect = () => {
+          this.client?.subscribe('/user/queue/messages', (message) => {
+            this.handleMessage(message);
+          });
+          this.client?.subscribe('/user/queue/typing', (message) => {
+            this.handleTyping(message);
+          });
+        };
+
+        this.client.onStompError = (frame) => {
+          console.error('WebSocket STOMP error', frame);
+        };
+
+        this.client.onWebSocketError = (event) => {
+          console.error('WebSocket error', event);
+        };
+        this.client.onWebSocketClose = (event) => {
+          console.warn('WebSocket closed', event);
+        };
+
+        this.client.activate();
+      })
+      .catch((error) => {
+        console.error('Failed to load realtime transport', error);
       });
-      this.client?.subscribe('/user/queue/typing', (message) => {
-        this.handleTyping(message);
-      });
-    };
-
-    this.client.onStompError = (frame) => {
-      console.error('WebSocket STOMP error', frame);
-    };
-
-    this.client.onWebSocketError = (event) => {
-      console.error('WebSocket error', event);
-    };
-    this.client.onWebSocketClose = (event) => {
-      console.warn('WebSocket closed', event);
-    };
-
-    this.client.activate();
   }
 
   disconnect(): void {

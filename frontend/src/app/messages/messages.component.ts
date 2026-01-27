@@ -103,6 +103,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
   private readonly uploadCancelMap = new Map<string, Subject<void>>();
   private readonly uploadSubscriptions = new Map<string, Subscription>();
   private pendingRecipientUsername: string | null = null;
+  private attachmentIdCounter = 0;
 
   mediaViewer: MediaViewerState | null = null;
 
@@ -992,10 +993,17 @@ export class MessagesComponent implements OnInit, OnDestroy {
   }
 
   private createAttachmentId(): string {
-    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-      return crypto.randomUUID();
+    const cryptoApi = typeof window !== 'undefined' ? window.crypto : undefined;
+    if (cryptoApi?.randomUUID) {
+      return cryptoApi.randomUUID();
     }
-    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    if (cryptoApi?.getRandomValues) {
+      const bytes = new Uint8Array(16);
+      cryptoApi.getRandomValues(bytes);
+      return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+    }
+    this.attachmentIdCounter += 1;
+    return `attachment-${Date.now()}-${this.attachmentIdCounter}`;
   }
 
   private updateAttachment(id: string, updater: (item: AttachmentItem) => AttachmentItem): void {

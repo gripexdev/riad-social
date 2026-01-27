@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.ContentDisposition;
 import org.springframework.core.io.support.ResourceRegion;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -43,7 +44,7 @@ public class MessageAttachmentController {
             @RequestBody CreateAttachmentUploadSessionRequest request,
             Principal principal
     ) {
-        return ResponseEntity.ok(attachmentService.createUploadSessions(principal.getName(), request));
+        return ResponseEntity.ok(attachmentService.createUploadSessions(requireUsername(principal), request));
     }
 
     @PostMapping(value = "/uploads/{uploadId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -54,7 +55,7 @@ public class MessageAttachmentController {
             @RequestPart("file") MultipartFile file,
             Principal principal
     ) {
-        return ResponseEntity.ok(attachmentService.uploadChunk(uploadId, file, chunkIndex, totalChunks, principal.getName()));
+        return ResponseEntity.ok(attachmentService.uploadChunk(uploadId, file, chunkIndex, totalChunks, requireUsername(principal)));
     }
 
     @PostMapping("/uploads/{uploadId}/finalize")
@@ -62,7 +63,7 @@ public class MessageAttachmentController {
             @PathVariable String uploadId,
             Principal principal
     ) {
-        return ResponseEntity.ok(attachmentService.finalizeUpload(uploadId, principal.getName()));
+        return ResponseEntity.ok(attachmentService.finalizeUpload(uploadId, requireUsername(principal)));
     }
 
     @DeleteMapping("/uploads/{uploadId}")
@@ -70,7 +71,7 @@ public class MessageAttachmentController {
             @PathVariable String uploadId,
             Principal principal
     ) {
-        attachmentService.cancelUpload(uploadId, principal.getName());
+        attachmentService.cancelUpload(uploadId, requireUsername(principal));
         return ResponseEntity.noContent().build();
     }
 
@@ -98,19 +99,20 @@ public class MessageAttachmentController {
 
         Resource resource = storageService.loadAsResource(attachment.getStorageKey());
         MediaType mediaType = MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM);
-        String filename = attachment.getOriginalFilename() == null ? "attachment" : attachment.getOriginalFilename();
+        String filename = sanitizeFilename(attachment.getOriginalFilename());
+        ContentDisposition disposition = ContentDisposition.inline().filename(filename).build();
         if (headers.getRange().isEmpty()) {
             return ResponseEntity.ok()
                     .contentType(mediaType)
                     .header(HttpHeaders.ACCEPT_RANGES, "bytes")
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                     .body(resource);
         }
         ResourceRegion region = resourceRegion(resource, headers.getRange(), DEFAULT_CHUNK_SIZE);
         return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
                 .contentType(mediaType)
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .body(region);
     }
 
@@ -148,5 +150,23 @@ public class MessageAttachmentController {
         long end = range.getRangeEnd(contentLength);
         long rangeLength = Math.min(chunkSize, end - start + 1);
         return new ResourceRegion(resource, start, rangeLength);
+    }
+
+    private String requireUsername(Principal principal) {
+        if (principal == null || principal.getName() == null || principal.getName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required.");
+        }
+        return principal.getName();
+    }
+
+    private String sanitizeFilename(String filename) {
+        if (filename == null || filename.isBlank()) {
+            return "attachment";
+        }
+        String sanitized = filename.replaceAll("[\\r\\n]", "").replace("\"", "'");
+        if (sanitized.length() > 150) {
+            sanitized = sanitized.substring(0, 150);
+        }
+        return sanitized;
     }
 }
