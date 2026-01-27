@@ -27,6 +27,8 @@ class NotificationTest {
 
         notification.setPostId(4L);
         notification.setPostImageUrl("post");
+        notification.setCommentId(9L);
+        notification.setParentCommentId(3L);
         notification.setCommentPreview("preview");
         notification.setRead(true);
         LocalDateTime createdAt = LocalDateTime.now().minusDays(1);
@@ -37,6 +39,8 @@ class NotificationTest {
         assertEquals(NotificationType.LIKE, notification.getType());
         assertEquals(4L, notification.getPostId());
         assertEquals("post", notification.getPostImageUrl());
+        assertEquals(9L, notification.getCommentId());
+        assertEquals(3L, notification.getParentCommentId());
         assertEquals("preview", notification.getCommentPreview());
         assertEquals(createdAt, notification.getCreatedAt());
         assertTrue(notification.isRead());

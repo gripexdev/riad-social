@@ -63,7 +63,10 @@
   </div>
   <section *ngIf="showComments" class="border-t border-line bg-cream/70 px-5 py-4">
     <div class="flex max-h-44 flex-col gap-2 overflow-y-auto">
-      <div *ngFor="let comment of post.comments" class="text-sm text-ink">
+      <div *ngFor="let comment of post.comments"
+           class="text-sm text-ink"
+           [attr.id]="'comment-' + comment.id"
+           [ngClass]="isFocusedComment(comment) ? 'rounded-xl px-2 py-1.5 bg-sand ring-1 ring-accent/30' : ''">
         <div class="flex flex-wrap items-center gap-2">
           <a class="font-semibold" [routerLink]="['/users', comment.username]">{{ comment.username }}</a>
           <span class="text-muted">{{ comment.content }}</span>
@@ -74,7 +77,10 @@
         </div>
 
         <div *ngIf="comment.replies?.length" class="mt-2 flex flex-col gap-2 border-l border-line/70 pl-4">
-          <div *ngFor="let reply of comment.replies" class="flex flex-wrap items-center gap-2 text-xs text-ink">
+          <div *ngFor="let reply of comment.replies"
+               class="flex flex-wrap items-center gap-2 text-xs text-ink"
+               [attr.id]="'reply-' + reply.id"
+               [ngClass]="isFocusedReply(reply) ? 'rounded-xl px-2 py-1.5 bg-sand ring-1 ring-accent/30' : ''">
             <a class="font-semibold" [routerLink]="['/users', reply.username]">{{ reply.username }}</a>
             <span class="text-muted">{{ reply.content }}</span>
             <button *ngIf="reply.username === currentUsername"

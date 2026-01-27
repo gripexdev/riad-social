@@ -28,6 +28,10 @@ public class Notification {
 
     private String postImageUrl;
 
+    private Long commentId;
+
+    private Long parentCommentId;
+
     @Column(columnDefinition = "TEXT")
     private String commentPreview;
 
@@ -89,6 +93,22 @@ public class Notification {
 
     public void setPostImageUrl(String postImageUrl) {
         this.postImageUrl = postImageUrl;
+    }
+
+    public Long getCommentId() {
+        return commentId;
+    }
+
+    public void setCommentId(Long commentId) {
+        this.commentId = commentId;
+    }
+
+    public Long getParentCommentId() {
+        return parentCommentId;
+    }
+
+    public void setParentCommentId(Long parentCommentId) {
+        this.parentCommentId = parentCommentId;
     }
 
     public String getCommentPreview() {

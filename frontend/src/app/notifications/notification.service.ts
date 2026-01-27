@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-export type NotificationType = 'FOLLOW' | 'LIKE' | 'COMMENT';
+export type NotificationType = 'FOLLOW' | 'LIKE' | 'COMMENT' | 'REPLY';
 
 export interface AppNotification {
   id: number;
@@ -11,6 +11,8 @@ export interface AppNotification {
   actorProfilePictureUrl?: string | null;
   postId?: number | null;
   postImageUrl?: string | null;
+  commentId?: number | null;
+  parentCommentId?: number | null;
   commentPreview?: string | null;
   createdAt: string;
   isRead: boolean;

@@ -134,8 +134,29 @@ export class AppComponent implements OnInit, OnDestroy {
         return 'liked your post.';
       case 'COMMENT':
         return 'commented on your post.';
+      case 'REPLY':
+        return 'replied to your comment.';
       default:
         return 'sent you a notification.';
+    }
+  }
+
+  openNotification(notification: AppNotification): void {
+    if (notification.type === 'FOLLOW') {
+      this.router.navigate(['/users', notification.actorUsername]);
+      this.closeNotifications();
+      return;
+    }
+    if (notification.postId) {
+      const queryParams: Record<string, number> = { postId: notification.postId };
+      if (notification.parentCommentId && notification.commentId) {
+        queryParams['commentId'] = notification.parentCommentId;
+        queryParams['replyId'] = notification.commentId;
+      } else if (notification.commentId) {
+        queryParams['commentId'] = notification.commentId;
+      }
+      this.router.navigate(['/home'], { queryParams });
+      this.closeNotifications();
     }
   }
 

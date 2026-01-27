@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { Post, PostService, CommentResponse } from '../post.service';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -19,10 +19,13 @@ import { PostDialogService } from '../post-dialog.service';
   templateUrl: './post-card.component.html',
   styleUrl: './post-card.component.scss'
 })
-export class PostCardComponent implements OnInit, OnDestroy {
+export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
   @Input() post!: Post;
   @Input() canEdit: boolean = false;
   @Input() canDelete: boolean = false;
+  @Input() autoOpenComments: boolean = false;
+  @Input() focusCommentId: number | null = null;
+  @Input() focusReplyId: number | null = null;
   @Output() postDeleted = new EventEmitter<number>();
   commentForm!: FormGroup;
   replyForm!: FormGroup;
@@ -61,6 +64,15 @@ export class PostCardComponent implements OnInit, OnDestroy {
       .subscribe((activeId) => {
         this.showDeleteConfirm = activeId === this.post.id;
       });
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['autoOpenComments'] && this.autoOpenComments) {
+      this.showComments = true;
+    }
+    if ((changes['focusCommentId'] && this.focusCommentId) || (changes['focusReplyId'] && this.focusReplyId)) {
+      this.showComments = true;
+    }
   }
 
   toggleLike(): void {
@@ -156,6 +168,14 @@ export class PostCardComponent implements OnInit, OnDestroy {
 
   toggleComments(): void {
     this.showComments = !this.showComments;
+  }
+
+  isFocusedComment(comment: CommentResponse): boolean {
+    return this.focusCommentId === comment.id;
+  }
+
+  isFocusedReply(reply: CommentResponse): boolean {
+    return this.focusReplyId === reply.id;
   }
 
   get isOwner(): boolean {

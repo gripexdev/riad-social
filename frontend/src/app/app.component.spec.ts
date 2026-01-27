@@ -48,6 +48,7 @@ describe('AppComponent', () => {
     expect(app.getNotificationMessage({ type: 'FOLLOW' } as any)).toBe('started following you.');
     expect(app.getNotificationMessage({ type: 'LIKE' } as any)).toBe('liked your post.');
     expect(app.getNotificationMessage({ type: 'COMMENT' } as any)).toBe('commented on your post.');
+    expect(app.getNotificationMessage({ type: 'REPLY' } as any)).toBe('replied to your comment.');
     expect(app.getNotificationMessage({ type: 'UNKNOWN' } as any)).toBe('sent you a notification.');
   });
 

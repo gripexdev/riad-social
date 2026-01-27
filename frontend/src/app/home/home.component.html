@@ -51,7 +51,14 @@
       </div>
       <div *ngIf="posts.length > 0" class="space-y-6">
         <div *ngFor="let post of posts" class="fade-up">
-          <app-post-card [post]="post" [canDelete]="true" (postDeleted)="removePost($event)"></app-post-card>
+          <app-post-card
+            [post]="post"
+            [canDelete]="true"
+            [autoOpenComments]="getAutoOpenComments(post.id)"
+            [focusCommentId]="getFocusCommentId(post.id)"
+            [focusReplyId]="getFocusReplyId(post.id)"
+            (postDeleted)="removePost($event)">
+          </app-post-card>
         </div>
       </div>
     </section>

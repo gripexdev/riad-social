@@ -73,6 +73,10 @@ public class NotificationService {
         Notification notification = new Notification(recipient, actor, NotificationType.COMMENT);
         notification.setPostId(post.getId());
         notification.setPostImageUrl(post.getImageUrl());
+        notification.setCommentId(comment.getId());
+        if (comment.getParentComment() != null) {
+            notification.setParentCommentId(comment.getParentComment().getId());
+        }
         notification.setCommentPreview(buildCommentPreview(comment.getContent()));
         notificationRepository.save(notification);
     }
@@ -89,9 +93,13 @@ public class NotificationService {
         if (recipient.getUsername().equals(actor.getUsername())) {
             return;
         }
-        Notification notification = new Notification(recipient, actor, NotificationType.COMMENT);
+        Notification notification = new Notification(recipient, actor, NotificationType.REPLY);
         notification.setPostId(post.getId());
         notification.setPostImageUrl(post.getImageUrl());
+        notification.setCommentId(comment.getId());
+        if (comment.getParentComment() != null) {
+            notification.setParentCommentId(comment.getParentComment().getId());
+        }
         notification.setCommentPreview(buildCommentPreview(comment.getContent()));
         notificationRepository.save(notification);
     }
@@ -145,6 +153,8 @@ public class NotificationService {
                 actor.getProfilePictureUrl(),
                 notification.getPostId(),
                 notification.getPostImageUrl(),
+                notification.getCommentId(),
+                notification.getParentCommentId(),
                 notification.getCommentPreview(),
                 notification.getCreatedAt(),
                 notification.isRead(),

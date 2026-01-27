@@ -176,15 +176,17 @@ class NotificationServiceTest {
         Post post = new Post("image-url", "caption", buildUser("owner"));
         post.setId(88L);
         Comment comment = new Comment("hello", actor, post);
+        comment.setId(42L);
 
         notificationService.createCommentNotification(actor, post, comment, recipient);
 
         ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository).save(captor.capture());
         Notification saved = captor.getValue();
-        assertEquals(NotificationType.COMMENT, saved.getType());
+        assertEquals(NotificationType.REPLY, saved.getType());
         assertEquals(recipient, saved.getRecipient());
         assertEquals(post.getId(), saved.getPostId());
+        assertEquals(42L, saved.getCommentId());
     }
 
     @Test
