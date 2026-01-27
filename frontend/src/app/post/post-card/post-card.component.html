@@ -78,10 +78,11 @@
             <a class="font-semibold" [routerLink]="['/users', reply.username]">{{ reply.username }}</a>
             <span class="text-muted">{{ reply.content }}</span>
             <button *ngIf="reply.username === currentUsername"
-                    class="text-[10px] uppercase tracking-[0.2em] text-muted transition hover:text-rose-600"
+                    class="ml-auto inline-flex h-6 w-6 items-center justify-center rounded-full text-muted transition hover:bg-rose-50 hover:text-rose-600"
                     type="button"
+                    aria-label="Delete reply"
                     (click)="deleteReply(comment, reply)">
-              Delete
+              <span class="material-icons text-[16px]">delete_outline</span>
             </button>
           </div>
         </div>
