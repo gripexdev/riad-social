@@ -78,3 +78,11 @@ docker-compose up -d
 - `docs/chat-attachments-ui.md` (frontend)
 - `docs/testing-chat-attachments.md`
 - `docs/api-chat-attachments.md`
+
+## Quality and CI
+CI and SonarCloud run on every push. To keep the Quality Gate green, run local checks first:
+```
+./scripts/ci-all.ps1
+```
+
+For setup details, pre-push hooks, and common pitfalls, see `CONTRIBUTING.md`.
