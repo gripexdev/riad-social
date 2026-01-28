@@ -145,6 +145,8 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
           comment.replies = [];
         }
         comment.replies.push(reply);
+        comment.replies = [...comment.replies];
+        this.post.comments = [...this.post.comments];
         this.refreshPostComments();
         this.cancelReply();
       },
