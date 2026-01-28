@@ -22,6 +22,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   focusedCommentId: number | null = null;
   focusedReplyId: number | null = null;
   autoOpenCommentPostId: number | null = null;
+  private fetchingFocusedPost = false;
+  private lastFetchedPostId: number | null = null;
   private readonly destroy$ = new Subject<void>();
 
   constructor(
@@ -39,13 +41,13 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.focusedCommentId = this.parseNumber(params.get('commentId'));
         this.focusedReplyId = this.parseNumber(params.get('replyId'));
         this.autoOpenCommentPostId = this.focusedPostId;
-        this.scrollToFocused();
+        this.ensureFocusedPost();
       });
 
     this.postService.getPosts().subscribe(posts => {
       this.posts = posts;
       this.autoOpenCommentPostId = this.focusedPostId;
-      this.scrollToFocused();
+      this.ensureFocusedPost();
     });
     this.loadCurrentUserProfile();
   }
@@ -115,6 +117,41 @@ export class HomeComponent implements OnInit, OnDestroy {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }, 50);
+  }
+
+  private ensureFocusedPost(): void {
+    if (!this.focusedPostId) {
+      return;
+    }
+    const hasPost = this.posts.some((post) => post.id === this.focusedPostId);
+    if (hasPost) {
+      this.autoOpenCommentPostId = this.focusedPostId;
+      this.scrollToFocused();
+      return;
+    }
+    if (this.fetchingFocusedPost || this.lastFetchedPostId === this.focusedPostId) {
+      return;
+    }
+    this.fetchingFocusedPost = true;
+    const requestedId = this.focusedPostId;
+    this.postService.getPostById(requestedId).subscribe({
+      next: (post) => {
+        if (!this.posts.some((existing) => existing.id === post.id)) {
+          this.posts = [post, ...this.posts];
+        }
+        this.autoOpenCommentPostId = post.id;
+        this.scrollToFocused();
+      },
+      error: (err) => {
+        console.error('Failed to load focused post', err);
+        this.fetchingFocusedPost = false;
+        this.lastFetchedPostId = requestedId;
+      },
+      complete: () => {
+        this.fetchingFocusedPost = false;
+        this.lastFetchedPostId = requestedId;
+      }
+    });
   }
 
   ngOnDestroy(): void {

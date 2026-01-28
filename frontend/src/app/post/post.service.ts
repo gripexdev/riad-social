@@ -39,6 +39,10 @@ export class PostService {
     return this.http.get<Post[]>(`${this.apiUrl}/explore`);
   }
 
+  getPostById(postId: number): Observable<Post> {
+    return this.http.get<Post>(`${this.apiUrl}/${postId}`);
+  }
+
   createPost(file: File, caption: string): Observable<Post> {
     const formData = new FormData();
     formData.append('file', file);
