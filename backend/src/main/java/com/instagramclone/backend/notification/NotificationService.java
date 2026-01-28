@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,10 +21,16 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public NotificationService(NotificationRepository notificationRepository, UserRepository userRepository) {
+    public NotificationService(
+            NotificationRepository notificationRepository,
+            UserRepository userRepository,
+            ApplicationEventPublisher eventPublisher
+    ) {
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @CacheEvict(cacheNames = "notificationUnreadCount", key = "#recipient.username", condition = "#recipient != null")
@@ -36,6 +43,7 @@ public class NotificationService {
         }
         Notification notification = new Notification(recipient, actor, NotificationType.FOLLOW);
         notificationRepository.save(notification);
+        notifyUnreadCount(recipient);
     }
 
     @CacheEvict(
@@ -55,6 +63,7 @@ public class NotificationService {
         notification.setPostId(post.getId());
         notification.setPostImageUrl(post.getImageUrl());
         notificationRepository.save(notification);
+        notifyUnreadCount(recipient);
     }
 
     @CacheEvict(
@@ -79,6 +88,7 @@ public class NotificationService {
         }
         notification.setCommentPreview(buildCommentPreview(comment.getContent()));
         notificationRepository.save(notification);
+        notifyUnreadCount(recipient);
     }
 
     @CacheEvict(
@@ -102,6 +112,7 @@ public class NotificationService {
         }
         notification.setCommentPreview(buildCommentPreview(comment.getContent()));
         notificationRepository.save(notification);
+        notifyUnreadCount(recipient);
     }
 
     @Transactional(readOnly = true)
@@ -130,6 +141,7 @@ public class NotificationService {
         User recipient = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
         notificationRepository.markAllRead(recipient);
+        notifyUnreadCount(recipient);
     }
 
     @Transactional
@@ -141,6 +153,7 @@ public class NotificationService {
                 .orElseThrow(() -> new IllegalArgumentException("Notification not found"));
         notification.setRead(true);
         notificationRepository.save(notification);
+        notifyUnreadCount(recipient);
     }
 
     private NotificationResponse toResponse(Notification notification, Set<String> followingUsernames) {
@@ -171,5 +184,13 @@ public class NotificationService {
             return normalized;
         }
         return normalized.substring(0, COMMENT_PREVIEW_LIMIT).trim() + "...";
+    }
+
+    private void notifyUnreadCount(User recipient) {
+        if (recipient == null || recipient.getUsername() == null) {
+            return;
+        }
+        long count = notificationRepository.countByRecipientAndReadIsFalse(recipient);
+        eventPublisher.publishEvent(new NotificationCountChangedEvent(recipient.getUsername(), count));
     }
 }
