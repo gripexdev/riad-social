@@ -145,9 +145,13 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
           comment.replies = [];
         }
         comment.replies.push(reply);
+        this.refreshPostComments();
         this.cancelReply();
       },
-      error: (err) => console.error('Error adding reply', err)
+      error: (err) => {
+        console.error('Error adding reply', err);
+        this.errorMessage = 'Failed to add reply. Please try again.';
+      }
     });
   }
 
@@ -270,5 +274,16 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private refreshPostComments(): void {
+    this.postService.getPostById(this.post.id).subscribe({
+      next: (updatedPost) => {
+        this.post.comments = updatedPost.comments || [];
+      },
+      error: (err) => {
+        console.error('Failed to refresh comments', err);
+      }
+    });
   }
 }
