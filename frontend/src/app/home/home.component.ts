@@ -24,6 +24,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   autoOpenCommentPostId: number | null = null;
   private fetchingFocusedPost = false;
   private lastFetchedPostId: number | null = null;
+  private readonly maxScrollAttempts = 6;
   private readonly destroy$ = new Subject<void>();
 
   constructor(
@@ -40,13 +41,11 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.focusedPostId = this.parseNumber(params.get('postId'));
         this.focusedCommentId = this.parseNumber(params.get('commentId'));
         this.focusedReplyId = this.parseNumber(params.get('replyId'));
-        this.autoOpenCommentPostId = this.focusedPostId;
         this.ensureFocusedPost();
       });
 
     this.postService.getPosts().subscribe(posts => {
       this.posts = posts;
-      this.autoOpenCommentPostId = this.focusedPostId;
       this.ensureFocusedPost();
     });
     this.loadCurrentUserProfile();
@@ -96,7 +95,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     return Number.isFinite(parsed) ? parsed : null;
   }
 
-  private scrollToFocused(): void {
+  private scrollToFocused(attempt = 0): void {
     if (!this.focusedPostId) {
       return;
     }
@@ -115,18 +114,22 @@ export class HomeComponent implements OnInit, OnDestroy {
       const element = document.getElementById(targetId);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
       }
-    }, 50);
+      if (attempt < this.maxScrollAttempts) {
+        this.scrollToFocused(attempt + 1);
+      }
+    }, 150);
   }
 
   private ensureFocusedPost(): void {
     if (!this.focusedPostId) {
+      this.autoOpenCommentPostId = null;
       return;
     }
     const hasPost = this.posts.some((post) => post.id === this.focusedPostId);
     if (hasPost) {
-      this.autoOpenCommentPostId = this.focusedPostId;
-      this.scrollToFocused();
+      this.triggerAutoOpen();
       return;
     }
     if (this.fetchingFocusedPost || this.lastFetchedPostId === this.focusedPostId) {
@@ -139,8 +142,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         if (!this.posts.some((existing) => existing.id === post.id)) {
           this.posts = [post, ...this.posts];
         }
-        this.autoOpenCommentPostId = post.id;
-        this.scrollToFocused();
+        this.triggerAutoOpen();
       },
       error: (err) => {
         console.error('Failed to load focused post', err);
@@ -152,6 +154,21 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.lastFetchedPostId = requestedId;
       }
     });
+  }
+
+  private triggerAutoOpen(): void {
+    if (!this.focusedPostId) {
+      return;
+    }
+    this.autoOpenCommentPostId = null;
+    if (typeof window === 'undefined') {
+      this.autoOpenCommentPostId = this.focusedPostId;
+      return;
+    }
+    window.setTimeout(() => {
+      this.autoOpenCommentPostId = this.focusedPostId;
+      this.scrollToFocused();
+    }, 0);
   }
 
   ngOnDestroy(): void {
