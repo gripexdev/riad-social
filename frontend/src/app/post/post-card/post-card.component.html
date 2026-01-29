@@ -127,7 +127,7 @@
                    (input)="onMentionInput($event, 'reply')"
                    (keydown)="onMentionKeydown($event)"
                    (blur)="onMentionBlur()">
-            <div *ngIf="isMentionActive('reply')" class="mention-menu">
+            <div *ngIf="isMentionActive('reply')" class="mention-menu" [ngStyle]="mentionMenuStyle">
               <button *ngFor="let user of mentionResults; let i = index"
                       class="mention-item"
                       type="button"
@@ -168,7 +168,7 @@
                (input)="onMentionInput($event, 'comment')"
                (keydown)="onMentionKeydown($event)"
                (blur)="onMentionBlur()">
-        <div *ngIf="isMentionActive('comment')" class="mention-menu">
+        <div *ngIf="isMentionActive('comment')" class="mention-menu" [ngStyle]="mentionMenuStyle">
           <button *ngFor="let user of mentionResults; let i = index"
                   class="mention-item"
                   type="button"

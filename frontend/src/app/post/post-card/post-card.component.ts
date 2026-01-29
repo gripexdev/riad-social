@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { Post, PostService, CommentResponse } from '../post.service';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -47,6 +47,7 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
   mentionOpen = false;
   mentionIndex = 0;
   mentionActiveInput: 'comment' | 'reply' | null = null;
+  mentionMenuStyle: { top: string; left: string; width: string } | null = null;
   private mentionSearch$ = new Subject<string>();
   private mentionInputEl: HTMLInputElement | null = null;
   private mentionStartIndex: number | null = null;
@@ -281,6 +282,7 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
     this.mentionInputEl = input;
     this.mentionStartIndex = mention.start;
     this.mentionCaretIndex = caret;
+    this.updateMentionMenuPosition();
     this.mentionSearch$.next(mention.query);
   }
 
@@ -353,6 +355,7 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
     this.mentionInputEl = null;
     this.mentionStartIndex = null;
     this.mentionCaretIndex = null;
+    this.mentionMenuStyle = null;
   }
 
   private findMentionAtCaret(value: string, caret: number): { start: number; query: string } | null {
@@ -370,6 +373,26 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
     }
     const query = fragment.slice(1);
     return { start: wordStart, query };
+  }
+
+  private updateMentionMenuPosition(): void {
+    if (!this.mentionInputEl || typeof window === 'undefined') {
+      return;
+    }
+    const rect = this.mentionInputEl.getBoundingClientRect();
+    this.mentionMenuStyle = {
+      top: `${rect.bottom + 8}px`,
+      left: `${rect.left}px`,
+      width: `${rect.width}px`
+    };
+  }
+
+  @HostListener('window:scroll')
+  @HostListener('window:resize')
+  onViewportChange(): void {
+    if (this.mentionOpen) {
+      this.updateMentionMenuPosition();
+    }
   }
 
   toggleComments(): void {

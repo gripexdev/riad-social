@@ -123,12 +123,8 @@ mat-card-actions.post-actions {
 }
 
 .mention-menu {
-  position: absolute;
-  z-index: 6;
-  left: 0;
-  right: 0;
-  top: 100%;
-  margin-top: 6px;
+  position: fixed;
+  z-index: 60;
   max-height: 220px;
   overflow-y: auto;
   border-radius: 18px;
