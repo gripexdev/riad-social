@@ -156,13 +156,15 @@ export class AppComponent implements OnInit, OnDestroy {
       return;
     }
     if (notification.postId) {
-      const queryParams: Record<string, number> = { postId: notification.postId };
+      const queryParams: Record<string, number | string> = { postId: notification.postId };
       if (notification.parentCommentId && notification.commentId) {
         queryParams['commentId'] = notification.parentCommentId;
         queryParams['replyId'] = notification.commentId;
       } else if (notification.commentId) {
         queryParams['commentId'] = notification.commentId;
       }
+      // Force param change so the home view scrolls even if we're already on the same URL.
+      queryParams['focus'] = Date.now();
       this.router.navigate(['/home'], { queryParams });
       this.closeNotifications();
     }
