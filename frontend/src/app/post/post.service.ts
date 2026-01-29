@@ -8,6 +8,19 @@ export interface CommentResponse {
   createdAt: string;
   parentId?: number | null;
   replies?: CommentResponse[];
+  reactions?: CommentReactionCount[];
+  viewerReaction?: string | null;
+}
+
+export interface CommentReactionCount {
+  emoji: string;
+  count: number;
+}
+
+export interface CommentReactionSummary {
+  commentId: number;
+  reactions: CommentReactionCount[];
+  viewerReaction: string | null;
 }
 
 export interface Post {
@@ -57,6 +70,10 @@ export class PostService {
   addComment(postId: number, content: string, parentCommentId?: number | null): Observable<CommentResponse> {
     const commentRequest = { content: content, parentCommentId: parentCommentId ?? null };
     return this.http.post<CommentResponse>(`${this.apiUrl}/${postId}/comment`, commentRequest);
+  }
+
+  toggleReplyReaction(postId: number, commentId: number, emoji: string): Observable<CommentReactionSummary> {
+    return this.http.post<CommentReactionSummary>(`${this.apiUrl}/${postId}/comments/${commentId}/reactions`, { emoji });
   }
 
   deleteComment(postId: number, commentId: number): Observable<void> {

@@ -205,6 +205,26 @@ class NotificationServiceTest {
     }
 
     @Test
+    void createMentionNotification_savesNotification() {
+        User actor = buildUser("alice");
+        User recipient = buildUser("bob");
+        Post post = new Post("image-url", "caption", buildUser("owner"));
+        post.setId(44L);
+        Comment comment = new Comment("@bob hello", actor, post);
+        comment.setId(12L);
+
+        notificationService.createMentionNotification(actor, post, comment, recipient);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(captor.capture());
+        Notification saved = captor.getValue();
+        assertEquals(NotificationType.MENTION, saved.getType());
+        assertEquals(recipient, saved.getRecipient());
+        assertEquals(post.getId(), saved.getPostId());
+        assertEquals(12L, saved.getCommentId());
+    }
+
+    @Test
     void getNotificationsForUser_mapsFollowedActors() {
         User actor = buildUser("alice");
         User recipient = buildUser("bob");

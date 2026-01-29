@@ -24,10 +24,12 @@ public class PostController {
 
     private final PostService postService;
     private final FileSystemStorageService storageService;
+    private final CommentReactionService reactionService;
 
-    public PostController(PostService postService, FileSystemStorageService storageService) {
+    public PostController(PostService postService, FileSystemStorageService storageService, CommentReactionService reactionService) {
         this.postService = postService;
         this.storageService = storageService;
+        this.reactionService = reactionService;
     }
 
     @PostMapping("/posts")
@@ -103,7 +105,28 @@ public class PostController {
                 newComment.getUser().getUsername(),
                 newComment.getCreatedAt(),
                 parentId,
-                List.of()
+                List.of(),
+                List.of(),
+                null
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/posts/{postId}/comments/{commentId}/reactions")
+    public ResponseEntity<CommentReactionSummaryResponse> toggleReplyReaction(
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            @RequestBody CommentReactionRequest request,
+            Principal principal
+    ) {
+        if (principal == null || principal.getName() == null || principal.getName().isBlank()) {
+            return ResponseEntity.status(401).build();
+        }
+        CommentReactionSummaryResponse response = reactionService.toggleReaction(
+                postId,
+                commentId,
+                request == null ? null : request.getEmoji(),
+                principal.getName()
         );
         return ResponseEntity.ok(response);
     }
@@ -159,7 +182,9 @@ public class PostController {
                 .anyMatch(user -> user.getUsername().equals(currentUsername));
         
         // Convert Comments to CommentResponse
-        List<CommentResponse> commentResponses = CommentMapper.toThreadedResponses(post.getComments());
+        CommentReactionService.CommentReactionLookup reactionLookup =
+                reactionService.buildLookup(post.getComments(), currentUsername);
+        List<CommentResponse> commentResponses = CommentMapper.toThreadedResponses(post.getComments(), reactionLookup);
 
         return new PostResponse(
                 post.getId(),

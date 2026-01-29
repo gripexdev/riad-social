@@ -113,6 +113,25 @@ class PostServiceTest {
     }
 
     @Test
+    void addComment_createsMentionNotifications() {
+        User owner = buildUser("owner");
+        User commenter = buildUser("commenter");
+        User mentioned = buildUser("bob");
+        Post post = new Post("image", "caption", owner);
+        post.setId(7L);
+
+        when(postRepository.findById(7L)).thenReturn(Optional.of(post));
+        when(userRepository.findByUsername("commenter")).thenReturn(Optional.of(commenter));
+        when(userRepository.findByUsernameIn(java.util.Set.of("bob"))).thenReturn(List.of(mentioned));
+        when(commentRepository.save(any(Comment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Comment saved = postService.addComment(7L, "hello @bob", "commenter", null);
+
+        assertEquals("hello @bob", saved.getContent());
+        verify(notificationService).createMentionNotification(commenter, post, saved, mentioned);
+    }
+
+    @Test
     void deleteReply_removesOwnReply() {
         User owner = buildUser("owner");
         User commenter = buildUser("commenter");

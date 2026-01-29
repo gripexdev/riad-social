@@ -115,6 +115,30 @@ public class NotificationService {
         notifyUnreadCount(recipient);
     }
 
+    @CacheEvict(
+            cacheNames = "notificationUnreadCount",
+            key = "#recipient.username",
+            condition = "#recipient != null"
+    )
+    public void createMentionNotification(User actor, Post post, Comment comment, User recipient) {
+        if (actor == null || post == null || comment == null || recipient == null) {
+            return;
+        }
+        if (recipient.getUsername().equals(actor.getUsername())) {
+            return;
+        }
+        Notification notification = new Notification(recipient, actor, NotificationType.MENTION);
+        notification.setPostId(post.getId());
+        notification.setPostImageUrl(post.getImageUrl());
+        notification.setCommentId(comment.getId());
+        if (comment.getParentComment() != null) {
+            notification.setParentCommentId(comment.getParentComment().getId());
+        }
+        notification.setCommentPreview(buildCommentPreview(comment.getContent()));
+        notificationRepository.save(notification);
+        notifyUnreadCount(recipient);
+    }
+
     @Transactional(readOnly = true)
     public List<NotificationResponse> getNotificationsForUser(String username) {
         User recipient = userRepository.findByUsername(username)

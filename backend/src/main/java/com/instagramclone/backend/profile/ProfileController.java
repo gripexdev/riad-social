@@ -27,11 +27,18 @@ public class ProfileController {
     private final UserService userService;
     private final PostService postService;
     private final FileSystemStorageService storageService;
+    private final com.instagramclone.backend.post.CommentReactionService reactionService;
 
-    public ProfileController(UserService userService, PostService postService, FileSystemStorageService storageService) {
+    public ProfileController(
+            UserService userService,
+            PostService postService,
+            FileSystemStorageService storageService,
+            com.instagramclone.backend.post.CommentReactionService reactionService
+    ) {
         this.userService = userService;
         this.postService = postService;
         this.storageService = storageService;
+        this.reactionService = reactionService;
     }
 
     @GetMapping("/{username}")
@@ -157,7 +164,9 @@ public class ProfileController {
         boolean likedByCurrentUser = post.getLikedBy().stream()
                 .anyMatch(user -> user.getUsername().equals(currentUsername));
 
-        List<CommentResponse> commentResponses = CommentMapper.toThreadedResponses(post.getComments());
+        com.instagramclone.backend.post.CommentReactionService.CommentReactionLookup reactionLookup =
+                reactionService.buildLookup(post.getComments(), currentUsername);
+        List<CommentResponse> commentResponses = CommentMapper.toThreadedResponses(post.getComments(), reactionLookup);
 
         return new PostResponse(
                 post.getId(),

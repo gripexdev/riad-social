@@ -142,6 +142,8 @@ export class AppComponent implements OnInit, OnDestroy {
         return 'commented on your post.';
       case 'REPLY':
         return 'replied to your comment.';
+      case 'MENTION':
+        return 'mentioned you in a comment.';
       default:
         return 'sent you a notification.';
     }

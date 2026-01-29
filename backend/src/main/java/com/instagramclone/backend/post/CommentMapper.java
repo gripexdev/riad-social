@@ -13,7 +13,10 @@ public final class CommentMapper {
     private CommentMapper() {
     }
 
-    public static List<CommentResponse> toThreadedResponses(Set<Comment> comments) {
+    public static List<CommentResponse> toThreadedResponses(
+            Set<Comment> comments,
+            CommentReactionService.CommentReactionLookup reactionLookup
+    ) {
         if (comments == null || comments.isEmpty()) {
             return List.of();
         }
@@ -34,6 +37,11 @@ public final class CommentMapper {
         for (Comment comment : topLevel) {
             List<CommentResponse> replies = mapReplies(repliesByParent.get(comment.getId()));
             response.add(toResponse(comment, null, replies));
+        }
+        if (reactionLookup != null) {
+            for (CommentResponse commentResponse : response) {
+                applyReactions(commentResponse, reactionLookup);
+            }
         }
         return response;
     }
@@ -61,6 +69,19 @@ public final class CommentMapper {
                 parentId,
                 replies
         );
+    }
+
+    private static void applyReactions(CommentResponse response, CommentReactionService.CommentReactionLookup lookup) {
+        if (response == null || response.getId() == null || lookup == null) {
+            return;
+        }
+        response.setReactions(lookup.reactionsByComment().getOrDefault(response.getId(), List.of()));
+        response.setViewerReaction(lookup.viewerReactions().get(response.getId()));
+        if (response.getReplies() != null) {
+            for (CommentResponse reply : response.getReplies()) {
+                applyReactions(reply, lookup);
+            }
+        }
     }
 
     private static Comparator<Comment> createdAtComparator() {

@@ -26,9 +26,12 @@ class PostControllerTest {
     @Mock
     private FileSystemStorageService storageService;
 
+    @Mock
+    private CommentReactionService reactionService;
+
     @Test
     void getExplorePosts_mapsPostResponse() {
-        PostController controller = new PostController(postService, storageService);
+        PostController controller = new PostController(postService, storageService, reactionService);
         Principal principal = () -> "viewer";
 
         User owner = new User();
@@ -51,6 +54,8 @@ class PostControllerTest {
         post.getComments().add(reply);
 
         when(postService.getExplorePosts()).thenReturn(List.of(post));
+        when(reactionService.buildLookup(post.getComments(), "viewer"))
+                .thenReturn(new CommentReactionService.CommentReactionLookup(java.util.Map.of(), java.util.Map.of()));
 
         ResponseEntity<List<PostResponse>> response = controller.getExplorePosts(principal);
 
@@ -64,7 +69,7 @@ class PostControllerTest {
 
     @Test
     void deleteReply_delegatesToService() {
-        PostController controller = new PostController(postService, storageService);
+        PostController controller = new PostController(postService, storageService, reactionService);
         Principal principal = () -> "alice";
 
         ResponseEntity<Void> response = controller.deleteReply(5L, 9L, principal);
