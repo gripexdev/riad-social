@@ -5,8 +5,9 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, switchMap, takeUntil } from 'rxjs/operators';
 import { PostDialogService } from '../post-dialog.service';
+import { ProfileService, UserSearchResult } from '../../profile/profile.service';
 
 @Component({
   selector: 'app-post-card',
@@ -42,13 +43,23 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
   readonly reactionEmojis = ['❤️', '😂', '😮', '😢', '😡', '👍'];
   private reactingReplyIds = new Set<number>();
   activeReactionPickerId: number | null = null;
+  mentionResults: UserSearchResult[] = [];
+  mentionOpen = false;
+  mentionIndex = 0;
+  mentionActiveInput: 'comment' | 'reply' | null = null;
+  private mentionSearch$ = new Subject<string>();
+  private mentionInputEl: HTMLInputElement | null = null;
+  private mentionStartIndex: number | null = null;
+  private mentionCaretIndex: number | null = null;
+  private mentionCloseTimer: number | null = null;
   private readonly destroy$ = new Subject<void>();
 
   constructor(
     private postService: PostService,
     private authService: AuthService,
     private fb: FormBuilder,
-    private postDialogService: PostDialogService
+    private postDialogService: PostDialogService,
+    private profileService: ProfileService
   ) {}
 
   ngOnInit(): void {
@@ -66,6 +77,24 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe((activeId) => {
         this.showDeleteConfirm = activeId === this.post.id;
+      });
+    this.mentionSearch$
+      .pipe(
+        debounceTime(200),
+        distinctUntilChanged(),
+        switchMap((query) => this.profileService.searchUsers(query, 6)),
+        takeUntil(this.destroy$)
+      )
+      .subscribe({
+        next: (results) => {
+          this.mentionResults = results || [];
+          this.mentionIndex = 0;
+          this.mentionOpen = this.mentionResults.length > 0;
+        },
+        error: () => {
+          this.mentionResults = [];
+          this.mentionOpen = false;
+        }
       });
   }
 
@@ -227,6 +256,119 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
     }
     const match = reply.reactions.find((reaction) => reaction.emoji === emoji);
     return match ? match.count : 0;
+  }
+
+  onMentionInput(event: Event, inputType: 'comment' | 'reply'): void {
+    const input = event.target as HTMLInputElement;
+    if (!input) {
+      return;
+    }
+    if (this.mentionCloseTimer !== null) {
+      window.clearTimeout(this.mentionCloseTimer);
+      this.mentionCloseTimer = null;
+    }
+    const caret = input.selectionStart ?? input.value.length;
+    const mention = this.findMentionAtCaret(input.value, caret);
+    if (!mention || mention.query.length < 2) {
+      this.closeMentionPicker();
+      return;
+    }
+    this.mentionActiveInput = inputType;
+    this.mentionInputEl = input;
+    this.mentionStartIndex = mention.start;
+    this.mentionCaretIndex = caret;
+    this.mentionSearch$.next(mention.query);
+  }
+
+  onMentionKeydown(event: KeyboardEvent): void {
+    if (!this.mentionOpen) {
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.mentionIndex = Math.min(this.mentionIndex + 1, this.mentionResults.length - 1);
+      return;
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.mentionIndex = Math.max(this.mentionIndex - 1, 0);
+      return;
+    }
+    if (event.key === 'Enter') {
+      const selected = this.mentionResults[this.mentionIndex];
+      if (selected) {
+        event.preventDefault();
+        this.selectMention(selected);
+      }
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.closeMentionPicker();
+    }
+  }
+
+  onMentionBlur(): void {
+    if (typeof window === 'undefined') {
+      this.closeMentionPicker();
+      return;
+    }
+    this.mentionCloseTimer = window.setTimeout(() => {
+      this.closeMentionPicker();
+    }, 150);
+  }
+
+  selectMention(user: UserSearchResult): void {
+    if (!this.mentionInputEl || this.mentionStartIndex === null || this.mentionCaretIndex === null) {
+      return;
+    }
+    const value = this.mentionInputEl.value;
+    const before = value.slice(0, this.mentionStartIndex);
+    const after = value.slice(this.mentionCaretIndex);
+    const insert = `@${user.username} `;
+    const nextValue = `${before}${insert}${after}`;
+    this.mentionInputEl.value = nextValue;
+    const nextCaret = before.length + insert.length;
+    this.mentionInputEl.setSelectionRange(nextCaret, nextCaret);
+    if (this.mentionActiveInput === 'comment') {
+      this.commentForm.patchValue({ comment: nextValue });
+    } else if (this.mentionActiveInput === 'reply') {
+      this.replyForm.patchValue({ reply: nextValue });
+    }
+    this.closeMentionPicker();
+  }
+
+  isMentionActive(inputType: 'comment' | 'reply'): boolean {
+    return this.mentionOpen && this.mentionActiveInput === inputType && this.mentionResults.length > 0;
+  }
+
+  private closeMentionPicker(): void {
+    this.mentionOpen = false;
+    this.mentionResults = [];
+    this.mentionActiveInput = null;
+    this.mentionInputEl = null;
+    this.mentionStartIndex = null;
+    this.mentionCaretIndex = null;
+  }
+
+  private findMentionAtCaret(value: string, caret: number): { start: number; query: string } | null {
+    if (!value) {
+      return null;
+    }
+    let index = caret - 1;
+    while (index >= 0 && !/\s/.test(value[index])) {
+      index--;
+    }
+    const wordStart = index + 1;
+    const fragment = value.slice(wordStart, caret);
+    if (!fragment.startsWith('@')) {
+      return null;
+    }
+    const query = fragment.slice(1);
+    if (!query) {
+      return null;
+    }
+    return { start: wordStart, query };
   }
 
   toggleComments(): void {

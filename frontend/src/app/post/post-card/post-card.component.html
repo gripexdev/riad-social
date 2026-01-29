@@ -119,10 +119,31 @@
         </div>
 
         <form *ngIf="activeReplyCommentId === comment.id" [formGroup]="replyForm" (ngSubmit)="addReply(comment)" class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-          <input class="w-full flex-1 rounded-2xl border border-line bg-white px-4 py-2 text-xs text-ink placeholder:text-muted focus:border-accent focus:outline-none"
-                 formControlName="reply"
-                 [placeholder]="replyTargetUsername ? 'Reply to @' + replyTargetUsername + '...' : 'Write a reply...'"
-                 required>
+          <div class="mention-input">
+            <input class="w-full flex-1 rounded-2xl border border-line bg-white px-4 py-2 text-xs text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+                   formControlName="reply"
+                   [placeholder]="replyTargetUsername ? 'Reply to @' + replyTargetUsername + '...' : 'Write a reply...'"
+                   required
+                   (input)="onMentionInput($event, 'reply')"
+                   (keydown)="onMentionKeydown($event)"
+                   (blur)="onMentionBlur()">
+            <div *ngIf="isMentionActive('reply')" class="mention-menu">
+              <button *ngFor="let user of mentionResults; let i = index"
+                      class="mention-item"
+                      type="button"
+                      [ngClass]="i === mentionIndex ? 'is-active' : ''"
+                      (click)="selectMention(user)">
+                <span class="mention-avatar">
+                  <img *ngIf="user.profilePictureUrl" [src]="user.profilePictureUrl" [alt]="user.username + ' avatar'">
+                  <span *ngIf="!user.profilePictureUrl">{{ user.username[0] | uppercase }}</span>
+                </span>
+                <span class="mention-meta">
+                  <span class="mention-username">{{ user.username }}</span>
+                  <span class="mention-name">{{ user.fullName }}</span>
+                </span>
+              </button>
+            </div>
+          </div>
           <div class="flex items-center gap-2">
             <button class="rounded-full bg-gradient-to-r from-accent to-accent-strong px-4 py-2 text-xs font-semibold text-white shadow-glow transition hover:opacity-90"
                     type="submit"
@@ -139,7 +160,31 @@
       </div>
     </div>
     <form [formGroup]="commentForm" (ngSubmit)="addComment()" class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-      <input class="w-full flex-1 rounded-2xl border border-line bg-white px-4 py-2 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none" formControlName="comment" placeholder="Add a comment..." required>
+      <div class="mention-input">
+        <input class="w-full flex-1 rounded-2xl border border-line bg-white px-4 py-2 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+               formControlName="comment"
+               placeholder="Add a comment..."
+               required
+               (input)="onMentionInput($event, 'comment')"
+               (keydown)="onMentionKeydown($event)"
+               (blur)="onMentionBlur()">
+        <div *ngIf="isMentionActive('comment')" class="mention-menu">
+          <button *ngFor="let user of mentionResults; let i = index"
+                  class="mention-item"
+                  type="button"
+                  [ngClass]="i === mentionIndex ? 'is-active' : ''"
+                  (click)="selectMention(user)">
+            <span class="mention-avatar">
+              <img *ngIf="user.profilePictureUrl" [src]="user.profilePictureUrl" [alt]="user.username + ' avatar'">
+              <span *ngIf="!user.profilePictureUrl">{{ user.username[0] | uppercase }}</span>
+            </span>
+            <span class="mention-meta">
+              <span class="mention-username">{{ user.username }}</span>
+              <span class="mention-name">{{ user.fullName }}</span>
+            </span>
+          </button>
+        </div>
+      </div>
       <button class="rounded-full bg-gradient-to-r from-accent to-accent-strong px-5 py-2 text-sm font-semibold text-white shadow-glow transition hover:opacity-90" type="submit" [disabled]="!commentForm.valid">Post</button>
     </form>
   </section>
