@@ -62,7 +62,7 @@
     </div>
   </div>
   <section *ngIf="showComments" class="border-t border-line bg-cream/70 px-5 py-4">
-    <div class="flex max-h-44 flex-col gap-2 overflow-y-auto">
+    <div class="flex max-h-44 flex-col gap-2 overflow-y-auto" (scroll)="onViewportChange()">
       <div *ngFor="let comment of post.comments"
            class="text-sm text-ink"
            [attr.id]="'comment-' + comment.id"
