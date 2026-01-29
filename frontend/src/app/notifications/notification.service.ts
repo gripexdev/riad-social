@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-export type NotificationType = 'FOLLOW' | 'LIKE' | 'COMMENT' | 'REPLY';
+export type NotificationType = 'FOLLOW' | 'LIKE' | 'COMMENT' | 'REPLY' | 'MENTION';
 
 export interface AppNotification {
   id: number;
