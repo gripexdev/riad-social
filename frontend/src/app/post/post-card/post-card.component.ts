@@ -82,7 +82,11 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
       .pipe(
         debounceTime(200),
         distinctUntilChanged(),
-        switchMap((query) => this.profileService.searchUsers(query, 6)),
+        switchMap((query) =>
+          query.length < 2
+            ? this.profileService.getMentionSuggestions(6)
+            : this.profileService.searchUsers(query, 6)
+        ),
         takeUntil(this.destroy$)
       )
       .subscribe({
@@ -269,7 +273,7 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
     }
     const caret = input.selectionStart ?? input.value.length;
     const mention = this.findMentionAtCaret(input.value, caret);
-    if (!mention || mention.query.length < 2) {
+    if (!mention) {
       this.closeMentionPicker();
       return;
     }
@@ -365,9 +369,6 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
       return null;
     }
     const query = fragment.slice(1);
-    if (!query) {
-      return null;
-    }
     return { start: wordStart, query };
   }
 

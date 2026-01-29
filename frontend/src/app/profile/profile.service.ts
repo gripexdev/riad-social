@@ -63,4 +63,12 @@ export class ProfileService {
       }
     });
   }
+
+  getMentionSuggestions(limit: number = 6): Observable<UserSearchResult[]> {
+    return this.http.get<UserSearchResult[]>(`${this.apiUrl}/mentions`, {
+      params: {
+        limit
+      }
+    });
+  }
 }

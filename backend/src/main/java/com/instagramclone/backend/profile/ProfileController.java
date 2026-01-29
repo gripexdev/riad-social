@@ -141,6 +141,30 @@ public class ProfileController {
         return ResponseEntity.ok(results);
     }
 
+    @GetMapping("/mentions")
+    public ResponseEntity<List<UserSearchResponse>> mentionSuggestions(
+            @RequestParam(name = "limit", defaultValue = "6") int limit,
+            Principal principal) {
+        if (principal == null || principal.getName() == null) {
+            return ResponseEntity.ok(List.of());
+        }
+        User currentUser = userService.findByUsername(principal.getName())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + principal.getName()));
+        int safeLimit = Math.max(1, Math.min(limit, 20));
+        return ResponseEntity.ok(currentUser.getFollowing().stream()
+                .filter(user -> user.getUsername() != null)
+                .filter(user -> !user.getUsername().equals(currentUser.getUsername()))
+                .sorted(java.util.Comparator.comparing(User::getUsername, String.CASE_INSENSITIVE_ORDER))
+                .limit(safeLimit)
+                .map(user -> new UserSearchResponse(
+                        user.getUsername(),
+                        user.getFullName(),
+                        user.getProfilePictureUrl(),
+                        true
+                ))
+                .collect(java.util.stream.Collectors.toList()));
+    }
+
     private ProfileResponse buildProfileResponse(User user, List<PostResponse> posts, User currentUser) {
         boolean isFollowing = false;
         if (currentUser != null && !currentUser.getUsername().equals(user.getUsername())) {
