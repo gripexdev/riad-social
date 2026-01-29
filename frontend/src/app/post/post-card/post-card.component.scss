@@ -123,9 +123,15 @@ mat-card-actions.post-actions {
   z-index: 20;
 }
 
+.mention-host.mention-open {
+  position: relative;
+  z-index: 20;
+  overflow: visible;
+}
+
 .mention-menu {
   position: absolute;
-  z-index: 80;
+  z-index: 200;
   left: 0;
   right: 0;
   top: 100%;

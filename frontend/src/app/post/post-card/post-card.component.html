@@ -1,4 +1,4 @@
-<article class="rounded-3xl border border-line bg-white/90 shadow-soft">
+<article class="rounded-3xl border border-line bg-white/90 shadow-soft mention-host" [class.mention-open]="mentionOpen">
   <header class="relative flex items-center gap-3 px-5 pt-5 pb-3">
     <div class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-accent to-accent-strong text-sm font-semibold text-white shadow-glow">
       <img *ngIf="post.profilePictureUrl; else postInitial" class="h-full w-full object-cover" [src]="post.profilePictureUrl" [alt]="post.username + ' avatar'">
