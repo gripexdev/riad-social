@@ -53,6 +53,7 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
   private mentionStartIndex: number | null = null;
   private mentionCaretIndex: number | null = null;
   private mentionCloseTimer: number | null = null;
+  private mentionRafId: number | null = null;
   private readonly destroy$ = new Subject<void>();
 
   constructor(
@@ -95,10 +96,15 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
           this.mentionResults = results || [];
           this.mentionIndex = 0;
           this.mentionOpen = this.mentionResults.length > 0;
+          if (this.mentionOpen) {
+            this.updateMentionMenuPosition();
+            this.startMentionTracking();
+          }
         },
         error: () => {
           this.mentionResults = [];
           this.mentionOpen = false;
+          this.stopMentionTracking();
         }
       });
   }
@@ -283,6 +289,7 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
     this.mentionStartIndex = mention.start;
     this.mentionCaretIndex = caret;
     this.updateMentionMenuPosition();
+    this.startMentionTracking();
     this.mentionSearch$.next(mention.query);
   }
 
@@ -356,6 +363,7 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
     this.mentionStartIndex = null;
     this.mentionCaretIndex = null;
     this.mentionMenuStyle = null;
+    this.stopMentionTracking();
   }
 
   private findMentionAtCaret(value: string, caret: number): { start: number; query: string } | null {
@@ -385,6 +393,34 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
       left: `${rect.left}px`,
       width: `${rect.width}px`
     };
+  }
+
+  private startMentionTracking(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (this.mentionRafId !== null) {
+      return;
+    }
+    const tick = () => {
+      if (!this.mentionOpen) {
+        this.stopMentionTracking();
+        return;
+      }
+      this.updateMentionMenuPosition();
+      this.mentionRafId = window.requestAnimationFrame(tick);
+    };
+    this.mentionRafId = window.requestAnimationFrame(tick);
+  }
+
+  private stopMentionTracking(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (this.mentionRafId !== null) {
+      window.cancelAnimationFrame(this.mentionRafId);
+      this.mentionRafId = null;
+    }
   }
 
   @HostListener('window:scroll')
