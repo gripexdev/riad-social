@@ -62,7 +62,7 @@
     </div>
   </div>
   <section *ngIf="showComments" class="border-t border-line bg-cream/70 px-5 py-4">
-    <div class="flex max-h-44 flex-col gap-2 overflow-y-auto" (scroll)="onViewportChange()">
+    <div class="flex max-h-44 flex-col gap-2 overflow-y-auto">
       <div *ngFor="let comment of post.comments"
            class="text-sm text-ink"
            [attr.id]="'comment-' + comment.id"
@@ -127,7 +127,7 @@
                    (input)="onMentionInput($event, 'reply')"
                    (keydown)="onMentionKeydown($event)"
                    (blur)="onMentionBlur()">
-            <div *ngIf="isMentionActive('reply')" class="mention-menu" [ngStyle]="mentionMenuStyle">
+            <div *ngIf="isMentionActive('reply')" class="mention-menu">
               <button *ngFor="let user of mentionResults; let i = index"
                       class="mention-item"
                       type="button"
@@ -168,7 +168,7 @@
                (input)="onMentionInput($event, 'comment')"
                (keydown)="onMentionKeydown($event)"
                (blur)="onMentionBlur()">
-        <div *ngIf="isMentionActive('comment')" class="mention-menu" [ngStyle]="mentionMenuStyle">
+        <div *ngIf="isMentionActive('comment')" class="mention-menu">
           <button *ngFor="let user of mentionResults; let i = index"
                   class="mention-item"
                   type="button"
