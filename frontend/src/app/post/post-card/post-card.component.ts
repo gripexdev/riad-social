@@ -39,6 +39,9 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
   showDeleteConfirm: boolean = false;
   activeReplyCommentId: number | null = null;
   replyTargetUsername: string | null = null;
+  readonly reactionEmojis = ['❤️', '😂', '😮', '😢', '😡', '👍'];
+  private reactingReplyIds = new Set<number>();
+  activeReactionPickerId: number | null = null;
   private readonly destroy$ = new Subject<void>();
 
   constructor(
@@ -170,6 +173,60 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
       },
       error: (err) => console.error('Error deleting reply', err)
     });
+  }
+
+  toggleReplyReaction(reply: CommentResponse, emoji: string): void {
+    if (!this.currentUsername || !reply || !reply.id) {
+      return;
+    }
+    if (this.reactingReplyIds.has(reply.id)) {
+      return;
+    }
+    this.reactingReplyIds.add(reply.id);
+    this.postService.toggleReplyReaction(this.post.id, reply.id, emoji).subscribe({
+      next: (summary) => {
+        reply.reactions = summary.reactions || [];
+        reply.viewerReaction = summary.viewerReaction ?? null;
+        this.reactingReplyIds.delete(reply.id);
+      },
+      error: (err) => {
+        console.error('Error reacting to reply', err);
+        this.reactingReplyIds.delete(reply.id);
+      }
+    });
+  }
+
+  toggleReactionPicker(reply: CommentResponse): void {
+    if (!reply || !reply.id) {
+      return;
+    }
+    this.activeReactionPickerId = this.activeReactionPickerId === reply.id ? null : reply.id;
+  }
+
+  closeReactionPicker(): void {
+    this.activeReactionPickerId = null;
+  }
+
+  getReactionSummary(reply: CommentResponse): string {
+    if (!reply.reactions || reply.reactions.length === 0) {
+      return '';
+    }
+    const sorted = [...reply.reactions].sort((a, b) => b.count - a.count);
+    const top = sorted.slice(0, 2).map((item) => item.emoji).join(' ');
+    const total = sorted.reduce((sum, item) => sum + item.count, 0);
+    return `${top} ${total}`.trim();
+  }
+
+  hasReaction(reply: CommentResponse, emoji: string): boolean {
+    return reply.viewerReaction === emoji;
+  }
+
+  getReactionCount(reply: CommentResponse, emoji: string): number {
+    if (!reply.reactions) {
+      return 0;
+    }
+    const match = reply.reactions.find((reaction) => reaction.emoji === emoji);
+    return match ? match.count : 0;
   }
 
   toggleComments(): void {

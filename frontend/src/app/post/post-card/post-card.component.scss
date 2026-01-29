@@ -117,6 +117,89 @@ mat-card-actions.post-actions {
   flex-grow: 1;
 }
 
+.reply-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reply-reactions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.reaction-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 11px;
+  color: var(--ink);
+  background: #fff;
+  transition: all 0.2s ease;
+}
+
+.reaction-summary:hover {
+  border-color: rgba(31, 26, 23, 0.2);
+  box-shadow: 0 6px 16px rgba(16, 24, 40, 0.08);
+}
+
+.reaction-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  width: 24px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  color: var(--muted);
+  transition: all 0.2s ease;
+}
+
+.reaction-add:hover {
+  border-color: var(--border);
+  color: var(--ink);
+  background: #fff;
+}
+
+.reaction-add .material-icons {
+  font-size: 16px;
+}
+
+.reaction-picker {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(16, 24, 40, 0.12);
+  z-index: 5;
+}
+
+.reaction-picker__item {
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.reaction-picker__item:hover {
+  background: rgba(255, 125, 80, 0.12);
+}
+
+.reaction-picker__item.is-active {
+  background: rgba(255, 125, 80, 0.18);
+}
+
 @keyframes fadeUp {
   from {
     opacity: 0;

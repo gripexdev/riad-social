@@ -78,18 +78,43 @@
 
         <div *ngIf="comment.replies?.length" class="mt-2 flex flex-col gap-2 border-l border-line/70 pl-4">
           <div *ngFor="let reply of comment.replies"
-               class="flex flex-wrap items-center gap-2 text-xs text-ink"
+               class="reply-item"
                [attr.id]="'reply-' + reply.id"
                [ngClass]="isFocusedReply(reply) ? 'rounded-xl px-2 py-1.5 bg-sand ring-1 ring-accent/30' : ''">
-            <a class="font-semibold" [routerLink]="['/users', reply.username]">{{ reply.username }}</a>
-            <span class="text-muted">{{ reply.content }}</span>
-            <button *ngIf="reply.username === currentUsername"
-                    class="ml-auto inline-flex h-6 w-6 items-center justify-center rounded-full text-muted transition hover:bg-rose-50 hover:text-rose-600"
-                    type="button"
-                    aria-label="Delete reply"
-                    (click)="deleteReply(comment, reply)">
-              <span class="material-icons text-[16px]">delete_outline</span>
-            </button>
+            <div class="flex flex-wrap items-center gap-2 text-xs text-ink">
+              <a class="font-semibold" [routerLink]="['/users', reply.username]">{{ reply.username }}</a>
+              <span class="text-muted">{{ reply.content }}</span>
+              <button *ngIf="reply.username === currentUsername"
+                      class="ml-auto inline-flex h-6 w-6 items-center justify-center rounded-full text-muted transition hover:bg-rose-50 hover:text-rose-600"
+                      type="button"
+                      aria-label="Delete reply"
+                      (click)="deleteReply(comment, reply)">
+                <span class="material-icons text-[16px]">delete_outline</span>
+              </button>
+            </div>
+            <div class="reply-reactions">
+              <button *ngIf="getReactionSummary(reply)"
+                      class="reaction-summary"
+                      type="button"
+                      (click)="toggleReactionPicker(reply)">
+                {{ getReactionSummary(reply) }}
+              </button>
+              <button class="reaction-add"
+                      type="button"
+                      aria-label="Add reaction"
+                      (click)="toggleReactionPicker(reply)">
+                <span class="material-icons">add_reaction</span>
+              </button>
+              <div *ngIf="activeReactionPickerId === reply.id" class="reaction-picker">
+                <button *ngFor="let emoji of reactionEmojis"
+                        class="reaction-picker__item"
+                        type="button"
+                        [ngClass]="hasReaction(reply, emoji) ? 'is-active' : ''"
+                        (click)="toggleReplyReaction(reply, emoji); closeReactionPicker()">
+                  {{ emoji }}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
