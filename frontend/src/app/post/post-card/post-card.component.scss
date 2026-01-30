@@ -123,19 +123,7 @@ mat-card-actions.post-actions {
   z-index: 20;
 }
 
-.mention-host.mention-open {
-  position: relative;
-  z-index: 20;
-  overflow: visible;
-}
-
 .mention-menu {
-  position: absolute;
-  z-index: 200;
-  left: 0;
-  right: 0;
-  top: 100%;
-  margin-top: 6px;
   max-height: 220px;
   overflow-y: auto;
   border-radius: 18px;
@@ -143,6 +131,10 @@ mat-card-actions.post-actions {
   background: #fff;
   box-shadow: 0 12px 26px rgba(16, 24, 40, 0.12);
   padding: 6px;
+}
+
+.mention-menu--overlay {
+  width: 100%;
 }
 
 .mention-item {

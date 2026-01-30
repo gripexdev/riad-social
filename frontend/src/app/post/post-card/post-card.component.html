@@ -62,7 +62,7 @@
     </div>
   </div>
   <section *ngIf="showComments" class="border-t border-line bg-cream/70 px-5 py-4">
-    <div class="flex max-h-44 flex-col gap-2 overflow-y-auto">
+    <div class="comment-scroll flex max-h-44 flex-col gap-2 overflow-y-auto">
       <div *ngFor="let comment of post.comments"
            class="text-sm text-ink"
            [attr.id]="'comment-' + comment.id"
@@ -127,22 +127,6 @@
                    (input)="onMentionInput($event, 'reply')"
                    (keydown)="onMentionKeydown($event)"
                    (blur)="onMentionBlur()">
-            <div *ngIf="isMentionActive('reply')" class="mention-menu">
-              <button *ngFor="let user of mentionResults; let i = index"
-                      class="mention-item"
-                      type="button"
-                      [ngClass]="i === mentionIndex ? 'is-active' : ''"
-                      (click)="selectMention(user)">
-                <span class="mention-avatar">
-                  <img *ngIf="user.profilePictureUrl" [src]="user.profilePictureUrl" [alt]="user.username + ' avatar'">
-                  <span *ngIf="!user.profilePictureUrl">{{ user.username[0] | uppercase }}</span>
-                </span>
-                <span class="mention-meta">
-                  <span class="mention-username">{{ user.username }}</span>
-                  <span class="mention-name">{{ user.fullName }}</span>
-                </span>
-              </button>
-            </div>
           </div>
           <div class="flex items-center gap-2">
             <button class="rounded-full bg-gradient-to-r from-accent to-accent-strong px-4 py-2 text-xs font-semibold text-white shadow-glow transition hover:opacity-90"
@@ -168,26 +152,29 @@
                (input)="onMentionInput($event, 'comment')"
                (keydown)="onMentionKeydown($event)"
                (blur)="onMentionBlur()">
-        <div *ngIf="isMentionActive('comment')" class="mention-menu">
-          <button *ngFor="let user of mentionResults; let i = index"
-                  class="mention-item"
-                  type="button"
-                  [ngClass]="i === mentionIndex ? 'is-active' : ''"
-                  (click)="selectMention(user)">
-            <span class="mention-avatar">
-              <img *ngIf="user.profilePictureUrl" [src]="user.profilePictureUrl" [alt]="user.username + ' avatar'">
-              <span *ngIf="!user.profilePictureUrl">{{ user.username[0] | uppercase }}</span>
-            </span>
-            <span class="mention-meta">
-              <span class="mention-username">{{ user.username }}</span>
-              <span class="mention-name">{{ user.fullName }}</span>
-            </span>
-          </button>
-        </div>
       </div>
       <button class="rounded-full bg-gradient-to-r from-accent to-accent-strong px-5 py-2 text-sm font-semibold text-white shadow-glow transition hover:opacity-90" type="submit" [disabled]="!commentForm.valid">Post</button>
     </form>
   </section>
+
+  <ng-template #mentionMenuTemplate>
+    <div *ngIf="mentionOpen" class="mention-menu mention-menu--overlay">
+      <button *ngFor="let user of mentionResults; let i = index"
+              class="mention-item"
+              type="button"
+              [ngClass]="i === mentionIndex ? 'is-active' : ''"
+              (click)="selectMention(user)">
+        <span class="mention-avatar">
+          <img *ngIf="user.profilePictureUrl" [src]="user.profilePictureUrl" [alt]="user.username + ' avatar'">
+          <span *ngIf="!user.profilePictureUrl">{{ user.username[0] | uppercase }}</span>
+        </span>
+        <span class="mention-meta">
+          <span class="mention-username">{{ user.username }}</span>
+          <span class="mention-name">{{ user.fullName }}</span>
+        </span>
+      </button>
+    </div>
+  </ng-template>
 
   <div *ngIf="showDeleteConfirm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6 backdrop-blur-sm" role="button" tabindex="0" aria-label="Close delete confirmation" (click)="closeDeleteConfirm()" (keydown.enter)="closeDeleteConfirm()" (keydown.space)="closeDeleteConfirm()">
     <div class="w-full max-w-sm rounded-3xl border border-line bg-white p-6 shadow-soft" role="dialog" aria-modal="true" tabindex="0" (click)="$event.stopPropagation()" (keydown.escape)="closeDeleteConfirm()" (keydown)="$event.stopPropagation()">

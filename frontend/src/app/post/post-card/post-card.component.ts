@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, TemplateRef, ViewChild, ViewContainerRef } from '@angular/core';
 import { Post, PostService, CommentResponse } from '../post.service';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -8,6 +8,8 @@ import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, takeUntil } from 'rxjs/operators';
 import { PostDialogService } from '../post-dialog.service';
 import { ProfileService, UserSearchResult } from '../../profile/profile.service';
+import { ConnectedPosition, Overlay, OverlayRef } from '@angular/cdk/overlay';
+import { TemplatePortal } from '@angular/cdk/portal';
 
 @Component({
   selector: 'app-post-card',
@@ -21,6 +23,7 @@ import { ProfileService, UserSearchResult } from '../../profile/profile.service'
   styleUrl: './post-card.component.scss'
 })
 export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
+  @ViewChild('mentionMenuTemplate') mentionMenuTemplate!: TemplateRef<unknown>;
   @Input() post!: Post;
   @Input() canEdit: boolean = false;
   @Input() canDelete: boolean = false;
@@ -52,6 +55,8 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
   private mentionStartIndex: number | null = null;
   private mentionCaretIndex: number | null = null;
   private mentionCloseTimer: number | null = null;
+  private mentionOverlayRef: OverlayRef | null = null;
+  private mentionOriginEl: HTMLElement | null = null;
   private readonly destroy$ = new Subject<void>();
 
   constructor(
@@ -59,7 +64,9 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
     private authService: AuthService,
     private fb: FormBuilder,
     private postDialogService: PostDialogService,
-    private profileService: ProfileService
+    private profileService: ProfileService,
+    private overlay: Overlay,
+    private viewContainerRef: ViewContainerRef
   ) {}
 
   ngOnInit(): void {
@@ -96,6 +103,11 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
           this.mentionOpen = this.mentionResults.length > 0;
           if (this.mentionResults.length === 0) {
             this.mentionOpen = false;
+          }
+          if (this.mentionOpen) {
+            this.openMentionOverlay();
+          } else {
+            this.closeMentionOverlay();
           }
         },
         error: () => {
@@ -357,6 +369,7 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
     this.mentionInputEl = null;
     this.mentionStartIndex = null;
     this.mentionCaretIndex = null;
+    this.closeMentionOverlay();
   }
 
   private findMentionAtCaret(value: string, caret: number): { start: number; query: string } | null {
@@ -375,6 +388,7 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
     const query = fragment.slice(1);
     return { start: wordStart, query };
   }
+
 
 
   toggleComments(): void {
@@ -479,6 +493,7 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.closeMentionOverlay(true);
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -493,4 +508,50 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
       }
     });
   }
+
+  private openMentionOverlay(): void {
+    if (!this.mentionInputEl || !this.mentionMenuTemplate) {
+      return;
+    }
+    if (!this.mentionOverlayRef || this.mentionOriginEl !== this.mentionInputEl) {
+      this.closeMentionOverlay(true);
+      const positions: ConnectedPosition[] = [
+        { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 6 },
+        { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -6 }
+      ];
+      const positionStrategy = this.overlay.position()
+        .flexibleConnectedTo(this.mentionInputEl)
+        .withPositions(positions)
+        .withFlexibleDimensions(false)
+        .withPush(true);
+      this.mentionOverlayRef = this.overlay.create({
+        positionStrategy,
+        scrollStrategy: this.overlay.scrollStrategies.reposition(),
+        hasBackdrop: false
+      });
+      this.mentionOriginEl = this.mentionInputEl;
+    }
+    if (this.mentionOverlayRef && !this.mentionOverlayRef.hasAttached()) {
+      const portal = new TemplatePortal(this.mentionMenuTemplate, this.viewContainerRef);
+      this.mentionOverlayRef.attach(portal);
+    }
+    const rect = this.mentionInputEl.getBoundingClientRect();
+    this.mentionOverlayRef?.updateSize({ width: rect.width });
+    this.mentionOverlayRef?.updatePosition();
+  }
+
+  private closeMentionOverlay(dispose: boolean = false): void {
+    if (this.mentionOverlayRef) {
+      if (dispose) {
+        this.mentionOverlayRef.dispose();
+        this.mentionOverlayRef = null;
+        this.mentionOriginEl = null;
+        return;
+      }
+      if (this.mentionOverlayRef.hasAttached()) {
+        this.mentionOverlayRef.detach();
+      }
+    }
+  }
+
 }
