@@ -69,7 +69,12 @@
            [ngClass]="isFocusedComment(comment) ? 'rounded-xl px-2 py-1.5 bg-sand ring-1 ring-accent/30' : ''">
         <div class="flex flex-wrap items-center gap-2">
           <a class="font-semibold" [routerLink]="['/users', comment.username]">{{ comment.username }}</a>
-          <span class="text-muted">{{ comment.content }}</span>
+          <span class="text-muted">
+            <ng-container *ngFor="let part of parseContent(comment.content)">
+              <a *ngIf="part.isMention" class="mention-link" [routerLink]="['/users', part.username]">{{ part.text }}</a>
+              <ng-container *ngIf="!part.isMention">{{ part.text }}</ng-container>
+            </ng-container>
+          </span>
         </div>
         <div class="mt-1 flex items-center gap-3 text-[11px] uppercase tracking-[0.18em] text-muted">
           <button class="transition hover:text-ink" type="button" (click)="startReply(comment)">Reply</button>
@@ -83,7 +88,12 @@
                [ngClass]="isFocusedReply(reply) ? 'rounded-xl px-2 py-1.5 bg-sand ring-1 ring-accent/30' : ''">
             <div class="flex flex-wrap items-center gap-2 text-xs text-ink">
               <a class="font-semibold" [routerLink]="['/users', reply.username]">{{ reply.username }}</a>
-              <span class="text-muted">{{ reply.content }}</span>
+              <span class="text-muted">
+                <ng-container *ngFor="let part of parseContent(reply.content)">
+                  <a *ngIf="part.isMention" class="mention-link" [routerLink]="['/users', part.username]">{{ part.text }}</a>
+                  <ng-container *ngIf="!part.isMention">{{ part.text }}</ng-container>
+                </ng-container>
+              </span>
               <button *ngIf="reply.username === currentUsername"
                       class="ml-auto inline-flex h-6 w-6 items-center justify-center rounded-full text-muted transition hover:bg-rose-50 hover:text-rose-600"
                       type="button"

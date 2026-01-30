@@ -278,6 +278,27 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
     return match ? match.count : 0;
   }
 
+  parseContent(content: string): Array<{ text: string; isMention: boolean; username?: string }> {
+    if (!content) {
+      return [];
+    }
+    const parts: Array<{ text: string; isMention: boolean; username?: string }> = [];
+    const regex = /@([a-zA-Z0-9._]+)/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(content)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ text: content.slice(lastIndex, match.index), isMention: false });
+      }
+      parts.push({ text: `@${match[1]}`, isMention: true, username: match[1] });
+      lastIndex = regex.lastIndex;
+    }
+    if (lastIndex < content.length) {
+      parts.push({ text: content.slice(lastIndex), isMention: false });
+    }
+    return parts;
+  }
+
   onMentionInput(event: Event, inputType: 'comment' | 'reply'): void {
     const input = event.target as HTMLInputElement;
     if (!input) {

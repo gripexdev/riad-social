@@ -137,6 +137,19 @@ mat-card-actions.post-actions {
   width: 100%;
 }
 
+.mention-link {
+  color: #2563eb;
+  font-weight: 600;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  border-radius: 6px;
+  padding: 1px 2px;
+}
+
+.mention-link:hover {
+  color: #1d4ed8;
+  background-color: rgba(37, 99, 235, 0.12);
+}
+
 .mention-item {
   width: 100%;
   display: flex;
