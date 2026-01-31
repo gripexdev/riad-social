@@ -46,6 +46,7 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
   readonly reactionEmojis = ['❤️', '😂', '😮', '😢', '😡', '👍'];
   private reactingReplyIds = new Set<number>();
   activeReactionPickerId: number | null = null;
+  private expandedReplyIds = new Set<number>();
   mentionResults: UserSearchResult[] = [];
   mentionOpen = false;
   mentionIndex = 0;
@@ -151,6 +152,7 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
             id: newCommentBackend.id,
             content: newCommentBackend.content,
             username: newCommentBackend.username || this.currentUsername!,
+            profilePictureUrl: newCommentBackend.profilePictureUrl,
             createdAt: newCommentBackend.createdAt || new Date().toISOString(),
             parentId: newCommentBackend.parentId ?? null,
             replies: newCommentBackend.replies ?? []
@@ -189,6 +191,7 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
           id: replyBackend.id,
           content: replyBackend.content,
           username: replyBackend.username || this.currentUsername!,
+          profilePictureUrl: replyBackend.profilePictureUrl,
           createdAt: replyBackend.createdAt || new Date().toISOString(),
           parentId: replyBackend.parentId ?? comment.id,
           replies: []
@@ -276,6 +279,21 @@ export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
     }
     const match = reply.reactions.find((reaction) => reaction.emoji === emoji);
     return match ? match.count : 0;
+  }
+
+  toggleReplies(comment: CommentResponse): void {
+    if (!comment || !comment.id) {
+      return;
+    }
+    if (this.expandedReplyIds.has(comment.id)) {
+      this.expandedReplyIds.delete(comment.id);
+    } else {
+      this.expandedReplyIds.add(comment.id);
+    }
+  }
+
+  isRepliesExpanded(comment: CommentResponse): boolean {
+    return !!comment?.id && this.expandedReplyIds.has(comment.id);
   }
 
   parseContent(content: string): Array<{ text: string; isMention: boolean; username?: string }> {

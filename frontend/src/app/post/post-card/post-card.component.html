@@ -63,66 +63,90 @@
   </div>
   <section *ngIf="showComments" class="border-t border-line bg-cream/70 px-5 py-4">
     <div class="comment-scroll flex max-h-44 flex-col gap-2 overflow-y-auto">
-      <div *ngFor="let comment of post.comments"
-           class="text-sm text-ink"
-           [attr.id]="'comment-' + comment.id"
-           [ngClass]="isFocusedComment(comment) ? 'rounded-xl px-2 py-1.5 bg-sand ring-1 ring-accent/30' : ''">
-        <div class="flex flex-wrap items-center gap-2">
-          <a class="font-semibold" [routerLink]="['/users', comment.username]">{{ comment.username }}</a>
-          <span class="text-muted">
-            <ng-container *ngFor="let part of parseContent(comment.content)">
-              <a *ngIf="part.isMention" class="mention-link" [routerLink]="['/users', part.username]">{{ part.text }}</a>
-              <ng-container *ngIf="!part.isMention">{{ part.text }}</ng-container>
-            </ng-container>
-          </span>
-        </div>
-        <div class="mt-1 flex items-center gap-3 text-[11px] uppercase tracking-[0.18em] text-muted">
-          <button class="transition hover:text-ink" type="button" (click)="startReply(comment)">Reply</button>
-          <span *ngIf="comment.replies?.length as replyCount">{{ replyCount }} replies</span>
-        </div>
-
-        <div *ngIf="comment.replies?.length" class="mt-2 flex flex-col gap-2 border-l border-line/70 pl-4">
-          <div *ngFor="let reply of comment.replies"
-               class="reply-item"
-               [attr.id]="'reply-' + reply.id"
-               [ngClass]="isFocusedReply(reply) ? 'rounded-xl px-2 py-1.5 bg-sand ring-1 ring-accent/30' : ''">
-            <div class="flex flex-wrap items-center gap-2 text-xs text-ink">
-              <a class="font-semibold" [routerLink]="['/users', reply.username]">{{ reply.username }}</a>
-              <span class="text-muted">
-                <ng-container *ngFor="let part of parseContent(reply.content)">
+      <div *ngFor="let comment of post.comments" class="comment-thread">
+        <div class="comment-row"
+             [attr.id]="'comment-' + comment.id"
+             [ngClass]="isFocusedComment(comment) ? 'is-focused' : ''">
+          <div class="comment-avatar" aria-hidden="true">
+            <img *ngIf="comment.profilePictureUrl" [src]="comment.profilePictureUrl" [alt]="comment.username + ' avatar'">
+            <span *ngIf="!comment.profilePictureUrl">{{ comment.username[0] | uppercase }}</span>
+          </div>
+          <div class="comment-main">
+            <div class="comment-line">
+              <a class="comment-username" [routerLink]="['/users', comment.username]">{{ comment.username }}</a>
+              <span class="comment-text">
+                <ng-container *ngFor="let part of parseContent(comment.content)">
                   <a *ngIf="part.isMention" class="mention-link" [routerLink]="['/users', part.username]">{{ part.text }}</a>
                   <ng-container *ngIf="!part.isMention">{{ part.text }}</ng-container>
                 </ng-container>
               </span>
-              <button *ngIf="reply.username === currentUsername"
-                      class="ml-auto inline-flex h-6 w-6 items-center justify-center rounded-full text-muted transition hover:bg-rose-50 hover:text-rose-600"
+            </div>
+            <div class="comment-meta">
+              <span class="comment-time">{{ comment.createdAt | date:'short' }}</span>
+              <span *ngIf="getReactionSummary(comment)" class="comment-like">{{ getReactionSummary(comment) }}</span>
+              <button class="comment-action" type="button" (click)="startReply(comment)">Reply</button>
+              <button *ngIf="comment.replies?.length as replyCount"
+                      class="comment-action"
                       type="button"
-                      aria-label="Delete reply"
-                      (click)="deleteReply(comment, reply)">
-                <span class="material-icons text-[16px]">delete_outline</span>
+                      (click)="toggleReplies(comment)">
+                {{ isRepliesExpanded(comment) ? 'Hide replies' : ('View replies (' + replyCount + ')') }}
               </button>
             </div>
-            <div class="reply-reactions">
-              <button *ngIf="getReactionSummary(reply)"
-                      class="reaction-summary"
-                      type="button"
-                      (click)="toggleReactionPicker(reply)">
-                {{ getReactionSummary(reply) }}
-              </button>
-              <button class="reaction-add"
-                      type="button"
-                      aria-label="Add reaction"
-                      (click)="toggleReactionPicker(reply)">
-                <span class="material-icons">add_reaction</span>
-              </button>
-              <div *ngIf="activeReactionPickerId === reply.id" class="reaction-picker">
-                <button *ngFor="let emoji of reactionEmojis"
-                        class="reaction-picker__item"
+          </div>
+        </div>
+
+        <div *ngIf="comment.replies?.length" class="reply-list" [class.is-collapsed]="!isRepliesExpanded(comment)">
+          <div *ngFor="let reply of comment.replies"
+               class="reply-item comment-row"
+               [attr.id]="'reply-' + reply.id"
+               [ngClass]="isFocusedReply(reply) ? 'is-focused' : ''">
+            <div class="comment-avatar" aria-hidden="true">
+              <img *ngIf="reply.profilePictureUrl" [src]="reply.profilePictureUrl" [alt]="reply.username + ' avatar'">
+              <span *ngIf="!reply.profilePictureUrl">{{ reply.username[0] | uppercase }}</span>
+            </div>
+            <div class="comment-main">
+              <div class="comment-line">
+                <a class="comment-username" [routerLink]="['/users', reply.username]">{{ reply.username }}</a>
+                <span class="comment-text">
+                  <ng-container *ngFor="let part of parseContent(reply.content)">
+                    <a *ngIf="part.isMention" class="mention-link" [routerLink]="['/users', part.username]">{{ part.text }}</a>
+                    <ng-container *ngIf="!part.isMention">{{ part.text }}</ng-container>
+                  </ng-container>
+                </span>
+                <button *ngIf="reply.username === currentUsername"
+                        class="comment-delete"
                         type="button"
-                        [ngClass]="hasReaction(reply, emoji) ? 'is-active' : ''"
-                        (click)="toggleReplyReaction(reply, emoji); closeReactionPicker()">
-                  {{ emoji }}
+                        aria-label="Delete reply"
+                        (click)="deleteReply(comment, reply)">
+                  <span class="material-icons">delete_outline</span>
                 </button>
+              </div>
+              <div class="comment-meta">
+                <span class="comment-time">{{ reply.createdAt | date:'short' }}</span>
+                <button class="comment-action" type="button" (click)="startReply(comment)">Reply</button>
+              </div>
+              <div class="reply-reactions">
+                <button *ngIf="getReactionSummary(reply)"
+                        class="reaction-summary"
+                        type="button"
+                        (click)="toggleReactionPicker(reply)">
+                  {{ getReactionSummary(reply) }}
+                </button>
+                <button class="reaction-add"
+                        type="button"
+                        aria-label="Add reaction"
+                        (click)="toggleReactionPicker(reply)">
+                  <span class="material-icons">add_reaction</span>
+                </button>
+                <div *ngIf="activeReactionPickerId === reply.id" class="reaction-picker">
+                  <button *ngFor="let emoji of reactionEmojis"
+                          class="reaction-picker__item"
+                          type="button"
+                          [ngClass]="hasReaction(reply, emoji) ? 'is-active' : ''"
+                          (click)="toggleReplyReaction(reply, emoji); closeReactionPicker()">
+                    {{ emoji }}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

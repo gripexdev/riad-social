@@ -8,16 +8,18 @@ public class CommentResponse {
     private Long id;
     private String content;
     private String username;
+    private String profilePictureUrl;
     private LocalDateTime createdAt;
     private Long parentId;
     private List<CommentResponse> replies;
     private List<CommentReactionCountResponse> reactions;
     private String viewerReaction;
 
-    public CommentResponse(Long id, String content, String username, LocalDateTime createdAt, Long parentId, List<CommentResponse> replies) {
+    public CommentResponse(Long id, String content, String username, String profilePictureUrl, LocalDateTime createdAt, Long parentId, List<CommentResponse> replies) {
         this.id = id;
         this.content = content;
         this.username = username;
+        this.profilePictureUrl = profilePictureUrl;
         this.createdAt = createdAt;
         this.parentId = parentId;
         this.replies = replies == null ? Collections.emptyList() : replies;
@@ -28,6 +30,7 @@ public class CommentResponse {
             Long id,
             String content,
             String username,
+            String profilePictureUrl,
             LocalDateTime createdAt,
             Long parentId,
             List<CommentResponse> replies,
@@ -37,6 +40,7 @@ public class CommentResponse {
         this.id = id;
         this.content = content;
         this.username = username;
+        this.profilePictureUrl = profilePictureUrl;
         this.createdAt = createdAt;
         this.parentId = parentId;
         this.replies = replies == null ? Collections.emptyList() : replies;
@@ -55,6 +59,10 @@ public class CommentResponse {
 
     public String getUsername() {
         return username;
+    }
+
+    public String getProfilePictureUrl() {
+        return profilePictureUrl;
     }
 
     public LocalDateTime getCreatedAt() {

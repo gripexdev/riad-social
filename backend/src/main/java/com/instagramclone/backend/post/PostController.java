@@ -103,6 +103,7 @@ public class PostController {
                 newComment.getId(),
                 newComment.getContent(),
                 newComment.getUser().getUsername(),
+                newComment.getUser().getProfilePictureUrl(),
                 newComment.getCreatedAt(),
                 parentId,
                 List.of(),

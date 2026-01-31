@@ -61,10 +61,12 @@ public final class CommentMapper {
 
     private static CommentResponse toResponse(Comment comment, Long parentId, List<CommentResponse> replies) {
         String username = comment.getUser() == null ? null : comment.getUser().getUsername();
+        String profilePictureUrl = comment.getUser() == null ? null : comment.getUser().getProfilePictureUrl();
         return new CommentResponse(
                 comment.getId(),
                 comment.getContent(),
                 username,
+                profilePictureUrl,
                 comment.getCreatedAt(),
                 parentId,
                 replies

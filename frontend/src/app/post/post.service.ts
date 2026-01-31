@@ -5,6 +5,7 @@ export interface CommentResponse {
   id: number;
   content: string;
   username: string;
+  profilePictureUrl?: string;
   createdAt: string;
   parentId?: number | null;
   replies?: CommentResponse[];
