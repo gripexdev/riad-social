@@ -1349,6 +1349,36 @@ describe('MessagesComponent', () => {
     expect(realtimeServiceSpy.sendTyping).not.toHaveBeenCalled();
   });
 
+  it('onMessageInput sends typing and schedules stop when eligible', () => {
+    const { component } = createComponent();
+    component.selectedConversationId = 22;
+    (component as any).typingActive = false;
+    (component as any).typingLastSentAt = 0;
+    const timeoutSpy = spyOn(window, 'setTimeout').and.returnValue(123);
+
+    component.onMessageInput();
+
+    expect(realtimeServiceSpy.sendTyping).toHaveBeenCalledWith(22, true);
+    expect((component as any).typingActive).toBeTrue();
+    expect((component as any).typingSendTimeoutId).toBe(123);
+    expect(timeoutSpy).toHaveBeenCalled();
+  });
+
+  it('onMessageInput clears existing timeout before scheduling new one', () => {
+    const { component } = createComponent();
+    component.selectedConversationId = 22;
+    (component as any).typingActive = true;
+    (component as any).typingLastSentAt = 0;
+    (component as any).typingSendTimeoutId = 99;
+    const clearSpy = spyOn(window, 'clearTimeout');
+    spyOn(window, 'setTimeout').and.returnValue(100);
+
+    component.onMessageInput();
+
+    expect(clearSpy).toHaveBeenCalledWith(99);
+    expect((component as any).typingSendTimeoutId).toBe(100);
+  });
+
   it('onMessageInput returns early when no conversation selected', () => {
     const { component } = createComponent();
     component.selectedConversationId = null;
@@ -1374,6 +1404,41 @@ describe('MessagesComponent', () => {
     expect(preventSpy).toHaveBeenCalled();
     expect(canSendSpy).toHaveBeenCalled();
     expect(sendSpy).not.toHaveBeenCalled();
+  });
+
+  it('onMessageKeydown sends when canSend is true', () => {
+    const { component } = createComponent();
+    spyOn(component as any, 'canSend').and.returnValue(true);
+    const sendSpy = spyOn(component, 'sendMessage');
+    const preventSpy = jasmine.createSpy('pd');
+
+    component.onMessageKeydown({ key: 'Enter', shiftKey: false, preventDefault: preventSpy } as any);
+
+    expect(preventSpy).toHaveBeenCalled();
+    expect(sendSpy).toHaveBeenCalled();
+  });
+
+  it('onMessageKeydown ignores non-enter keys', () => {
+    const { component } = createComponent();
+    const sendSpy = spyOn(component, 'sendMessage');
+    const preventSpy = jasmine.createSpy('pd');
+
+    component.onMessageKeydown({ key: 'a', shiftKey: false, preventDefault: preventSpy } as any);
+
+    expect(preventSpy).not.toHaveBeenCalled();
+    expect(sendSpy).not.toHaveBeenCalled();
+  });
+
+  it('sendMessage returns early when already sending', async () => {
+    const { component } = createComponent();
+    component.isSending = true;
+    component.recipientControl.setValue('bob');
+    component.messageControl.setValue('hi');
+
+    await component.sendMessage();
+
+    expect(messageServiceSpy.sendMessage).not.toHaveBeenCalled();
+    expect(messageServiceSpy.createAttachmentUploadSessions).not.toHaveBeenCalled();
   });
 
   it('clearAttachments revokes previews', () => {

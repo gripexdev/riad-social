@@ -41,6 +41,9 @@ backend/.mvn/wrapper/maven-wrapper.jar
 dist/
 build/
 
+# Local temp
+tmp/
+
 # Docker
 **/docker-compose.override.yml
 **/*.pid
