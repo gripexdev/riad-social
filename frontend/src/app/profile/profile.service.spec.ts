@@ -62,4 +62,13 @@ describe('ProfileService', () => {
     expect(mentionReq.request.params.get('limit')).toBe('4');
     mentionReq.flush([]);
   });
+
+  it('uses default limit for mention suggestions', () => {
+    service.getMentionSuggestions().subscribe();
+    const req = httpMock.expectOne((request) =>
+      request.url === 'http://localhost:8080/api/users/mentions'
+    );
+    expect(req.request.params.get('limit')).toBe('6');
+    req.flush([]);
+  });
 });

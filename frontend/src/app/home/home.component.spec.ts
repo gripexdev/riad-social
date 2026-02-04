@@ -101,4 +101,9 @@ describe('HomeComponent', () => {
     (component as any).loadCurrentUserProfile();
     expect(component.currentUserProfilePictureUrl).toBeNull();
   });
+
+  it('parses invalid numbers safely', () => {
+    const parseNumber = (component as any).parseNumber;
+    expect(parseNumber.call(component, 'abc')).toBeNull();
+  });
 });

@@ -137,6 +137,34 @@ describe('ProfileComponent', () => {
     expect(component.profile.isFollowing).toBeTrue();
   });
 
+  it('returns display avatar url', () => {
+    component.profile = {
+      username: 'alice',
+      fullName: 'Alice',
+      bio: '',
+      profilePictureUrl: 'pic',
+      postCount: 0,
+      followerCount: 0,
+      followingCount: 0,
+      posts: [],
+      isFollowing: false
+    };
+    expect(component.displayAvatarUrl).toBe('pic');
+
+    component.avatarPreviewUrl = 'preview';
+    expect(component.displayAvatarUrl).toBe('preview');
+  });
+
+  it('accepts valid image avatar', () => {
+    const file = new File(['data'], 'avatar.png', { type: 'image/png' });
+    const input = document.createElement('input');
+    Object.defineProperty(input, 'files', { value: [file] });
+    const urlSpy = spyOn(URL, 'createObjectURL').and.returnValue('blob:avatar');
+    component.onAvatarSelected({ currentTarget: input } as any);
+    expect(urlSpy).toHaveBeenCalled();
+    expect(component.avatarPreviewUrl).toBe('blob:avatar');
+  });
+
   it('unfollows when already following', () => {
     component.profile = {
       username: 'bob',

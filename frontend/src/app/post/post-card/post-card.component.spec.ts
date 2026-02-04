@@ -13,6 +13,7 @@ describe('PostCardComponent', () => {
   let component: PostCardComponent;
   let fixture: ComponentFixture<PostCardComponent>;
   let postService: jasmine.SpyObj<PostService>;
+  let postDialogService: { activeDeletePostId$: any; openDelete: jasmine.Spy; closeDelete: jasmine.Spy };
 
   beforeEach(async () => {
     postService = jasmine.createSpyObj<PostService>('PostService', [
@@ -24,6 +25,11 @@ describe('PostCardComponent', () => {
       'updatePost',
       'deletePost'
     ]);
+    postDialogService = {
+      activeDeletePostId$: of(null),
+      openDelete: jasmine.createSpy('openDelete'),
+      closeDelete: jasmine.createSpy('closeDelete')
+    };
     postService.addComment.and.returnValue(of({
       id: 2,
       content: 'reply',
@@ -69,7 +75,7 @@ describe('PostCardComponent', () => {
       providers: [
         { provide: PostService, useValue: postService },
         { provide: AuthService, useValue: { getUsername: () => 'me' } },
-        { provide: PostDialogService, useValue: { activeDeletePostId$: of(null), openDelete: () => {}, closeDelete: () => {} } },
+        { provide: PostDialogService, useValue: postDialogService },
         { provide: ProfileService, useValue: { getMentionSuggestions: () => of([]), searchUsers: () => of([]) } }
       ]
     })
@@ -248,5 +254,103 @@ describe('PostCardComponent', () => {
   it('parses mention fragments around caret', () => {
     const result = (component as any).findMentionAtCaret('hello @al', 9);
     expect(result?.query).toBe('al');
+  });
+
+  it('returns empty parts for blank content', () => {
+    expect(component.parseContent('')).toEqual([]);
+  });
+
+  it('skips add comment when not authenticated', () => {
+    component.currentUsername = null;
+    component.commentForm.setValue({ comment: 'hello' });
+    component.addComment();
+    expect(postService.addComment).not.toHaveBeenCalled();
+  });
+
+  it('ignores startReply without current user', () => {
+    component.currentUsername = null;
+    component.startReply({ id: 1 } as any);
+    expect(component.activeReplyCommentId).toBeNull();
+  });
+
+  it('skips addReply when form invalid', () => {
+    const comment = { id: 1, content: 'hi', username: 'bob', createdAt: new Date().toISOString(), replies: [] } as any;
+    component.startReply(comment);
+    component.replyForm.setValue({ reply: '' });
+    component.addReply(comment);
+    expect(postService.addComment).not.toHaveBeenCalled();
+  });
+
+  it('skips delete when no current user', () => {
+    component.currentUsername = null;
+    const parent = { id: 1, replies: [{ id: 2, username: 'me' }] } as any;
+    component.deleteReply(parent, parent.replies[0]);
+    expect(postService.deleteComment).not.toHaveBeenCalled();
+  });
+
+  it('returns empty summary when no reactions', () => {
+    expect(component.getReactionSummary({} as any)).toBe('');
+  });
+
+  it('toggles comments visibility', () => {
+    component.showComments = false;
+    component.toggleComments();
+    expect(component.showComments).toBeTrue();
+  });
+
+  it('returns focus flags', () => {
+    component.focusCommentId = 5;
+    component.focusReplyId = 7;
+    expect(component.isFocusedComment({ id: 5 } as any)).toBeTrue();
+    expect(component.isFocusedReply({ id: 7 } as any)).toBeTrue();
+  });
+
+  it('computes ownership and actions flags', () => {
+    component.post.username = 'me';
+    component.canEdit = true;
+    component.canDelete = false;
+    expect(component.isOwner).toBeTrue();
+    expect(component.hasActions).toBeTrue();
+  });
+
+  it('toggleActions respects permissions', () => {
+    component.post.username = 'other';
+    component.canEdit = false;
+    component.canDelete = false;
+    component.toggleActions();
+    expect(component.showActions).toBeFalse();
+
+    component.post.username = 'me';
+    component.canEdit = true;
+    component.toggleActions();
+    expect(component.showActions).toBeTrue();
+  });
+
+  it('does not start edit when not owner', () => {
+    component.canEdit = true;
+    component.post.username = 'other';
+    component.startEdit();
+    expect(component.isEditing).toBeFalse();
+  });
+
+  it('skips save when already saving', () => {
+    component.canEdit = true;
+    component.post.username = 'me';
+    component.isSaving = true;
+    component.saveEdit();
+    expect(postService.updatePost).not.toHaveBeenCalled();
+  });
+
+  it('does not open delete when not allowed', () => {
+    component.canDelete = false;
+    component.post.username = 'me';
+    component.openDeleteConfirm();
+    expect(postDialogService.openDelete).not.toHaveBeenCalled();
+  });
+
+  it('closeDeleteConfirm respects saving flag', () => {
+    component.isSaving = true;
+    component.closeDeleteConfirm();
+    expect(postDialogService.closeDelete).not.toHaveBeenCalled();
   });
 });

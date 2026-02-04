@@ -23,6 +23,12 @@ describe('NotificationRealtimeService', () => {
     expect(console.error).not.toHaveBeenCalled();
   });
 
+  it('skips connect when already active', () => {
+    (service as any).client = { active: true };
+    service.connect();
+    expect((service as any).client.active).toBeTrue();
+  });
+
   it('handles numeric count payload', (done) => {
     const message = { body: '5' } as any;
     service.onCount().subscribe((count) => {

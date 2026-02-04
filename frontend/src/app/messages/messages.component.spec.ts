@@ -300,6 +300,20 @@ describe('MessagesComponent', () => {
     expect((component as any).resolveAttachmentType(pdf)).toBe('DOCUMENT');
   });
 
+  it('returns mime types for attachment kinds', () => {
+    const { component } = createComponent();
+    expect((component as any).mimeFromType('IMAGE')).toBe('image/jpeg');
+    expect((component as any).mimeFromType('VIDEO')).toBe('video/mp4');
+    expect((component as any).mimeFromType('DOCUMENT')).toBe('application/pdf');
+  });
+
+  it('returns max bytes for each type', () => {
+    const { component } = createComponent();
+    expect((component as any).maxBytesForType('IMAGE')).toBe(component.maxImageBytes);
+    expect((component as any).maxBytesForType('VIDEO')).toBe(component.maxVideoBytes);
+    expect((component as any).maxBytesForType('DOCUMENT')).toBe(component.maxDocumentBytes);
+  });
+
   it('updates alt text with length limit', () => {
     const { component } = createComponent();
     const item = { id: 'a1', file: new File(['a'], 'photo.jpg', { type: 'image/jpeg' }), type: 'IMAGE', displayName: 'photo.jpg', sizeBytes: 10, altText: '', wasCompressed: false, status: 'DRAFT', progress: 0 } as any;

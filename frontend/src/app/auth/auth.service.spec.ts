@@ -33,11 +33,30 @@ describe('AuthService', () => {
     expect(service.getToken()).toBe('jwt-token');
   });
 
+  it('requests password reset endpoints', () => {
+    service.forgotPassword('a@b.com').subscribe();
+    const forgotReq = httpMock.expectOne('http://localhost:8080/api/auth/forgot-password');
+    expect(forgotReq.request.method).toBe('POST');
+    forgotReq.flush({ message: 'ok' });
+
+    service.resetPassword('token', 'newpass').subscribe();
+    const resetReq = httpMock.expectOne('http://localhost:8080/api/auth/reset-password');
+    expect(resetReq.request.method).toBe('POST');
+    resetReq.flush({ message: 'ok' });
+  });
+
   it('decodes username from token', () => {
     const payload = btoa(JSON.stringify({ sub: 'alice' }));
     const token = `header.${payload}.sig`;
     localStorage.setItem('jwt_token', token);
 
     expect(service.getUsername()).toBe('alice');
+  });
+
+  it('reports authentication state and clears token', () => {
+    localStorage.setItem('jwt_token', 'token');
+    expect(service.isAuthenticated()).toBeTrue();
+    service.removeToken();
+    expect(service.isAuthenticated()).toBeFalse();
   });
 });
