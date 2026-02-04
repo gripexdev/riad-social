@@ -19,6 +19,7 @@ describe('HomeComponent', () => {
     postService = jasmine.createSpyObj<PostService>('PostService', ['getPosts', 'getPostById']);
     profileService = jasmine.createSpyObj<ProfileService>('ProfileService', ['getProfile']);
     postService.getPosts.and.returnValue(of([]));
+    postService.getPostById.and.returnValue(of({ id: 1 } as any));
     profileService.getProfile.and.returnValue(of({
       username: 'alice',
       fullName: 'Alice',
@@ -49,6 +50,11 @@ describe('HomeComponent', () => {
     fixture = TestBed.createComponent(HomeComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    component.ngOnDestroy();
+    queryParamMap$.complete();
   });
 
   it('should create', () => {

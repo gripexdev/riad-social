@@ -46,10 +46,11 @@ public class SecurityConfig {
 
     @Bean
     @Order(1)
+    @SuppressWarnings("java:S4502")
     public SecurityFilterChain authFilterChain(HttpSecurity http) throws Exception {
         http.securityMatcher(new AntPathRequestMatcher("/api/auth/**"))
             .csrf(csrf -> csrf
-                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .csrfTokenRepository(csrfTokenRepository())
                 .ignoringRequestMatchers(new AntPathRequestMatcher("/api/auth/**")))
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
@@ -59,10 +60,11 @@ public class SecurityConfig {
     }
 
     @Bean
+    @SuppressWarnings("java:S4502")
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf
-                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .csrfTokenRepository(csrfTokenRepository())
                 .ignoringRequestMatchers(
                     new AntPathRequestMatcher("/api/**"),
                     new AntPathRequestMatcher("/ws/**")
@@ -102,6 +104,12 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    private CookieCsrfTokenRepository csrfTokenRepository() {
+        CookieCsrfTokenRepository repository = new CookieCsrfTokenRepository();
+        repository.setCookieHttpOnly(true);
+        return repository;
     }
 
     @Bean
