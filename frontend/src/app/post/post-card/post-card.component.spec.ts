@@ -53,6 +53,17 @@ describe('PostCardComponent', () => {
       comments: []
     }));
     postService.deleteComment.and.returnValue(of(void 0));
+    postService.updatePost.and.returnValue(of({
+      id: 1,
+      imageUrl: 'image',
+      caption: 'caption',
+      username: 'owner',
+      createdAt: new Date().toISOString(),
+      likesCount: 0,
+      likedByCurrentUser: false,
+      comments: []
+    }));
+    postService.deletePost.and.returnValue(of(void 0));
     await TestBed.configureTestingModule({
       imports: [PostCardComponent, HttpClientTestingModule, RouterTestingModule, OverlayModule],
       providers: [
@@ -203,6 +214,16 @@ describe('PostCardComponent', () => {
     component.editForm.setValue({ caption: 'oops' });
     component.saveEdit();
     expect(component.errorMessage).toContain('Failed to update post');
+    postService.updatePost.and.returnValue(of({
+      id: 1,
+      imageUrl: 'image',
+      caption: 'caption',
+      username: 'owner',
+      createdAt: new Date().toISOString(),
+      likesCount: 0,
+      likedByCurrentUser: false,
+      comments: []
+    }));
   });
 
   it('opens and confirms delete', () => {
