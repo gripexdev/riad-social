@@ -250,6 +250,7 @@ describe('MessagesComponent', () => {
     expect(component.formatRelativeTime(now)).toBe('now');
     expect(component.formatRelativeTime(twoHoursAgo)).toBe('2h');
     expect(component.formatRelativeTime(twoDaysAgo)).toBe('2d');
+    expect(component.getAttachmentLabel({ status: 'EXPIRED' } as any)).toBe('Expired attachment');
     expect(component.getAttachmentLabel({ status: 'FAILED' } as any)).toBe('Attachment failed');
     expect(component.getAttachmentLabel({ status: 'QUARANTINED' } as any)).toBe('Attachment quarantined');
     expect(component.getAttachmentLabel({ status: 'UPLOADING' } as any)).toBe('Uploading');
@@ -267,6 +268,12 @@ describe('MessagesComponent', () => {
     component.selectedConversationId = 1;
 
     expect(component.getConversationPreview(component.conversations[0])).toBe('You: hello');
+  });
+
+  it('returns default preview when conversation empty', () => {
+    const { component } = createComponent();
+    const preview = component.getConversationPreview({} as any);
+    expect(preview).toContain('Say hello');
   });
 
   it('builds attachment previews by type', () => {
@@ -383,6 +390,40 @@ describe('MessagesComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/messages', 9]);
   });
 
+  it('does not apply recipient navigation when draft exists', () => {
+    const { component } = createComponent();
+    component.conversations = [{ id: 9, participantUsername: 'bob' } as any];
+    (component as any).pendingRecipientUsername = 'bob';
+    component.messageControl.setValue('draft');
+
+    (component as any).applyRecipientNavigation();
+
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('applyRecipientNavigation prepares composer when draft exists', () => {
+    const { component } = createComponent();
+    component.conversations = [{ id: 9, participantUsername: 'bob' } as any];
+    (component as any).pendingRecipientUsername = 'bob';
+    component.messageControl.setValue('draft');
+    const prepareSpy = spyOn(component as any, 'prepareComposer').and.callThrough();
+
+    (component as any).applyRecipientNavigation();
+
+    expect(prepareSpy).toHaveBeenCalledWith('bob');
+    expect(component.isComposingNew).toBeTrue();
+  });
+
+  it('applyRecipientNavigation skips when conversation already selected', () => {
+    const { component } = createComponent();
+    (component as any).pendingRecipientUsername = 'bob';
+    component.selectedConversationId = 1;
+
+    (component as any).applyRecipientNavigation();
+
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
   it('prepares composer for new recipient', () => {
     const { component } = createComponent();
     (component as any).prepareComposer('carol');
@@ -390,11 +431,23 @@ describe('MessagesComponent', () => {
     expect(component.recipientControl.value).toBe('carol');
   });
 
+  it('prepareComposer ignores blank recipient', () => {
+    const { component } = createComponent();
+    (component as any).prepareComposer('   ');
+    expect(component.isComposingNew).toBeFalse();
+  });
+
   it('finds conversations by username', () => {
     const { component } = createComponent();
     component.conversations = [{ id: 1, participantUsername: 'Bob' } as any];
     const found = (component as any).findConversationByUsername('bob');
     expect(found?.id).toBe(1);
+  });
+
+  it('findConversationByUsername returns undefined for blank values', () => {
+    const { component } = createComponent();
+    const found = (component as any).findConversationByUsername('  ');
+    expect(found).toBeUndefined();
   });
 
   it('marks conversations read updates counts', () => {
@@ -406,6 +459,33 @@ describe('MessagesComponent', () => {
     (component as any).markConversationRead(1);
 
     expect(component.conversations[0].unreadCount).toBe(0);
+  });
+
+  it('stopTypingSignal clears timeout and sends typing false', () => {
+    const { component } = createComponent();
+    const clearSpy = spyOn(window, 'clearTimeout');
+    component.selectedConversationId = 5;
+    (component as any).typingActive = true;
+    (component as any).typingSendTimeoutId = window.setTimeout(() => {}, 10);
+
+    (component as any).stopTypingSignal();
+
+    expect(clearSpy).toHaveBeenCalled();
+    expect(realtimeServiceSpy.sendTyping).toHaveBeenCalledWith(5, false);
+  });
+
+  it('clearTypingIndicator resets typing state', () => {
+    const { component } = createComponent();
+    const clearSpy = spyOn(window, 'clearTimeout');
+    component.typingConversationId = 7;
+    component.typingUsername = 'bob';
+    (component as any).typingTimeoutId = window.setTimeout(() => {}, 10);
+
+    (component as any).clearTypingIndicator();
+
+    expect(clearSpy).toHaveBeenCalled();
+    expect(component.typingConversationId).toBeNull();
+    expect(component.typingUsername).toBeNull();
   });
 
   it('stops typing on blur', () => {
@@ -435,6 +515,14 @@ describe('MessagesComponent', () => {
       progress: 0
     } as any]);
     expect(component.canSend()).toBeTrue();
+  });
+
+  it('canSend returns false when sending', () => {
+    const { component } = createComponent();
+    component.isSending = true;
+    component.recipientControl.setValue('bob');
+    component.messageControl.setValue('hi');
+    expect(component.canSend()).toBeFalse();
   });
 
   it('removes attachments and revokes preview URLs', () => {
@@ -547,6 +635,27 @@ describe('MessagesComponent', () => {
     expect(component.mediaViewer).toBeNull();
   });
 
+  it('does not open media viewer for invalid attachments', () => {
+    const { component } = createComponent();
+    component.openMediaViewer({ id: 1, type: 'DOCUMENT', status: 'READY', url: 'u' } as any);
+    expect(component.mediaViewer).toBeNull();
+    component.openMediaViewer({ id: 1, type: 'IMAGE', status: 'FAILED', url: 'u' } as any);
+    expect(component.mediaViewer).toBeNull();
+  });
+
+  it('openMediaViewer ignores attachments without url', () => {
+    const { component } = createComponent();
+    component.openMediaViewer({ id: 1, type: 'IMAGE', status: 'READY' } as any);
+    expect(component.mediaViewer).toBeNull();
+  });
+
+  it('closes media viewer on keydown', () => {
+    const { component } = createComponent();
+    component.mediaViewer = { type: 'IMAGE', url: 'u' } as any;
+    component.onMediaViewerKeydown({ key: 'Enter', preventDefault: jasmine.createSpy('pd') } as any);
+    expect(component.mediaViewer).toBeNull();
+  });
+
   it('marks upload failure when chunk upload errors', fakeAsync(() => {
     const { component } = createComponent();
     const file = new File(['hello'], 'note.txt', { type: 'text/plain' });
@@ -649,6 +758,13 @@ describe('MessagesComponent', () => {
     expect(component.sendError).toContain('Message must be under');
   });
 
+  it('sendMessage returns early when already sending', async () => {
+    const { component } = createComponent();
+    component.isSending = true;
+    await component.sendMessage();
+    expect(component.sendError).toBeNull();
+  });
+
   it('sends messages without attachments and handles errors', () => {
     const { component } = createComponent();
     const upsertSpy = spyOn(component as any, 'upsertMessage').and.callThrough();
@@ -711,6 +827,20 @@ describe('MessagesComponent', () => {
     tick(1500);
     expect(realtimeServiceSpy.sendTyping).toHaveBeenCalledWith(11, false);
   }));
+
+  it('does not send message on shift+enter', () => {
+    const { component } = createComponent();
+    const sendSpy = spyOn(component, 'sendMessage').and.returnValue(Promise.resolve());
+    component.onMessageKeydown({ key: 'Enter', shiftKey: true, preventDefault: jasmine.createSpy('pd') } as any);
+    expect(sendSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not send typing when no conversation selected', () => {
+    const { component } = createComponent();
+    component.selectedConversationId = null;
+    component.onMessageInput();
+    expect(realtimeServiceSpy.sendTyping).not.toHaveBeenCalled();
+  });
 
   it('triggers file picker and handles file selection', async () => {
     const { component } = createComponent();
@@ -825,6 +955,24 @@ describe('MessagesComponent', () => {
     expect(component.typingConversationId).toBeNull();
   }));
 
+  it('ignores typing events for other users or conversations', () => {
+    const { component } = createComponent();
+    component.selectedConversationId = 7;
+    (component as any).handleTypingEvent({ conversationId: 7, senderUsername: 'alice', typing: true });
+    expect(component.typingConversationId).toBeNull();
+    (component as any).handleTypingEvent({ conversationId: 9, senderUsername: 'bob', typing: true });
+    expect(component.typingConversationId).toBeNull();
+  });
+
+  it('shows typing indicator only for active conversation', () => {
+    const { component } = createComponent();
+    component.selectedConversationId = 5;
+    component.typingConversationId = 5;
+    expect(component.showTypingIndicator).toBeTrue();
+    component.typingConversationId = 9;
+    expect(component.showTypingIndicator).toBeFalse();
+  });
+
   it('updates conversation previews and unread counts', () => {
     const { component } = createComponent();
     component.conversations = [{
@@ -852,6 +1000,30 @@ describe('MessagesComponent', () => {
     const loadSpy = spyOn(component, 'loadConversations');
     (component as any).updateConversationPreview({ ...message, conversationId: 999 });
     expect(loadSpy).toHaveBeenCalled();
+  });
+
+  it('increments unread count for inactive conversations', () => {
+    const { component } = createComponent();
+    component.conversations = [{
+      id: 12,
+      participantUsername: 'carol',
+      unreadCount: 0
+    } as any];
+    component.selectedConversationId = 99;
+    const message = {
+      id: 1,
+      conversationId: 12,
+      senderUsername: 'carol',
+      recipientUsername: 'alice',
+      content: 'hello',
+      attachments: [],
+      createdAt: nowIso,
+      isRead: false
+    } as any;
+
+    (component as any).updateConversationPreview(message);
+
+    expect(component.conversations[0].unreadCount).toBe(1);
   });
 
   it('builds video attachment items and reads metadata', async () => {
@@ -977,5 +1149,384 @@ describe('MessagesComponent', () => {
     (component as any).syncUploadProgress(message);
 
     expect((component as any).uploadProgressByAttachmentId.has(1)).toBeFalse();
+  });
+
+  it('buildPreview returns empty when no content or attachments', () => {
+    const { component } = createComponent();
+    const preview = (component as any).buildPreview('   ', []);
+    expect(preview).toBe('');
+  });
+
+  it('openMediaViewer ignores non-ready or unsupported attachments', () => {
+    const { component } = createComponent();
+    component.openMediaViewer({ status: 'UPLOADING', type: 'IMAGE', url: 'x' } as any);
+    expect(component.mediaViewer).toBeNull();
+
+    component.openMediaViewer({ status: 'READY', type: 'DOCUMENT', url: 'x' } as any);
+    expect(component.mediaViewer).toBeNull();
+  });
+
+  it('openMediaViewer sets viewer for images', () => {
+    const { component } = createComponent();
+    component.openMediaViewer({
+      status: 'READY',
+      type: 'IMAGE',
+      url: 'blob:image',
+      altText: 'alt',
+      originalFilename: 'photo.jpg'
+    } as any);
+    expect(component.mediaViewer?.url).toBe('blob:image');
+    expect(component.mediaViewer?.type).toBe('IMAGE');
+  });
+
+  it('onMediaViewerKeydown closes viewer on action keys', () => {
+    const { component } = createComponent();
+    component.mediaViewer = { type: 'IMAGE', url: 'blob:image' };
+    const preventSpy = jasmine.createSpy('preventDefault');
+
+    component.onMediaViewerKeydown({ key: 'Escape', preventDefault: preventSpy } as any);
+    expect(preventSpy).toHaveBeenCalled();
+    expect(component.mediaViewer).toBeNull();
+  });
+
+  it('onMediaViewerKeydown ignores other keys', () => {
+    const { component } = createComponent();
+    component.mediaViewer = { type: 'IMAGE', url: 'blob:image' };
+    const preventSpy = jasmine.createSpy('preventDefault');
+
+    component.onMediaViewerKeydown({ key: 'a', preventDefault: preventSpy } as any);
+    expect(preventSpy).not.toHaveBeenCalled();
+    expect(component.mediaViewer).not.toBeNull();
+  });
+
+  it('updateAltText returns when target is missing', () => {
+    const { component } = createComponent();
+    const item = { id: 'a1', file: new File(['a'], 'photo.jpg', { type: 'image/jpeg' }), type: 'IMAGE', displayName: 'photo.jpg', sizeBytes: 10, altText: 'x', wasCompressed: false, status: 'DRAFT', progress: 0 } as any;
+    component.attachments$.next([item]);
+
+    component.updateAltText('a1', { target: null } as any);
+
+    expect(component.attachmentItems[0].altText).toBe('x');
+  });
+
+  it('removeAttachment no-ops when item is missing', () => {
+    const { component } = createComponent();
+    component.attachments$.next([]);
+    component.removeAttachment('missing');
+    expect(component.attachmentItems.length).toBe(0);
+  });
+
+  it('builds document attachment items', async () => {
+    const { component } = createComponent();
+    const docFile = new File(['a'], 'note.txt', { type: 'text/plain' });
+    const item = await (component as any).buildAttachmentItem(docFile, 'DOCUMENT');
+    expect(item.type).toBe('DOCUMENT');
+    expect(item.wasCompressed).toBeFalse();
+  });
+
+  it('builds gif attachment without compression', async () => {
+    const { component } = createComponent();
+    const gifFile = new File(['a'], 'anim.gif', { type: 'image/gif' });
+    const urlSpy = spyOn(URL, 'createObjectURL').and.returnValue('blob:gif');
+
+    const item = await (component as any).buildAttachmentItem(gifFile, 'IMAGE');
+
+    expect(urlSpy).toHaveBeenCalled();
+    expect(item.wasCompressed).toBeFalse();
+  });
+
+  it('handles missing bitmap support by sending original image', async () => {
+    const { component } = createComponent();
+    const file = new File([new Uint8Array(10)], 'photo.jpg', { type: 'image/jpeg' });
+    const originalCreateImageBitmap = (window as any).createImageBitmap;
+    (window as any).createImageBitmap = undefined;
+
+    const result = await (component as any).compressImageFile(file);
+
+    expect(result.wasCompressed).toBeFalse();
+    expect(result.file).toBe(file);
+    (window as any).createImageBitmap = originalCreateImageBitmap;
+  });
+
+  it('readVideoMetadata resolves empty on error', async () => {
+    const { component } = createComponent();
+    const originalCreateElement = document.createElement.bind(document);
+    let videoRef: any;
+    document.createElement = ((tag: string) => {
+      if (tag === 'video') {
+        videoRef = {
+          preload: '',
+          muted: false,
+          src: '',
+          duration: NaN,
+          videoWidth: 0,
+          videoHeight: 0,
+          load: jasmine.createSpy('load'),
+          onloadedmetadata: null,
+          onerror: null
+        };
+        return videoRef;
+      }
+      return originalCreateElement(tag);
+    }) as any;
+
+    const promise = (component as any).readVideoMetadata('blob:video');
+    videoRef.onerror();
+    const metadata = await promise;
+
+    expect(metadata.width).toBeUndefined();
+    expect(metadata.height).toBeUndefined();
+
+    document.createElement = originalCreateElement as any;
+  });
+
+  it('startUpload returns early when item is incomplete', fakeAsync(() => {
+    const { component } = createComponent();
+    component.attachments$.next([{
+      id: 'a1',
+      file: new File(['x'], 'x.txt'),
+      type: 'DOCUMENT',
+      displayName: 'x.txt',
+      sizeBytes: 1,
+      altText: '',
+      wasCompressed: false,
+      status: 'UPLOADING',
+      progress: 0
+    } as any]);
+
+    (component as any).startUpload('a1');
+    flushMicrotasks();
+
+    expect(messageServiceSpy.uploadAttachmentChunk).not.toHaveBeenCalled();
+  }));
+
+  it('uploadAttachmentChunks returns early when item missing', fakeAsync(() => {
+    const { component } = createComponent();
+    (component as any).uploadAttachmentChunks('missing', 'upload', 10, new Subject<void>());
+    flushMicrotasks();
+    expect(messageServiceSpy.uploadAttachmentChunk).not.toHaveBeenCalled();
+  }));
+
+  it('handleTypingEvent ignores null event', () => {
+    const { component } = createComponent();
+    (component as any).handleTypingEvent(null as any);
+    expect(component.typingConversationId).toBeNull();
+  });
+
+  it('getAttachmentLabel returns empty for ready', () => {
+    const { component } = createComponent();
+    expect(component.getAttachmentLabel({ status: 'READY' } as any)).toBe('');
+  });
+
+  it('previewForAttachment returns default when type missing', () => {
+    const { component } = createComponent();
+    const preview = (component as any).previewForAttachment({} as any);
+    expect(preview).toBe('Attachment');
+  });
+
+  it('stopTypingSignal clears timers and sends stop typing', () => {
+    const { component } = createComponent();
+    component.selectedConversationId = 12;
+    (component as any).typingActive = true;
+    (component as any).typingSendTimeoutId = 123;
+    spyOn(window, 'clearTimeout');
+
+    (component as any).stopTypingSignal();
+
+    expect(window.clearTimeout).toHaveBeenCalledWith(123);
+    expect(realtimeServiceSpy.sendTyping).toHaveBeenCalledWith(12, false);
+  });
+
+  it('onMessageInput does not resend typing within interval', () => {
+    const { component } = createComponent();
+    component.selectedConversationId = 22;
+    const now = Date.now();
+    (component as any).typingActive = true;
+    (component as any).typingLastSentAt = now;
+
+    component.onMessageInput();
+
+    expect(realtimeServiceSpy.sendTyping).not.toHaveBeenCalled();
+  });
+
+  it('onMessageInput returns early when no conversation selected', () => {
+    const { component } = createComponent();
+    component.selectedConversationId = null;
+    component.onMessageInput();
+    expect(realtimeServiceSpy.sendTyping).not.toHaveBeenCalled();
+  });
+
+  it('onMessageKeydown ignores shift+enter', () => {
+    const { component } = createComponent();
+    const sendSpy = spyOn(component, 'sendMessage');
+    component.onMessageKeydown({ key: 'Enter', shiftKey: true, preventDefault: jasmine.createSpy('pd') } as any);
+    expect(sendSpy).not.toHaveBeenCalled();
+  });
+
+  it('onMessageKeydown does not send when canSend is false', () => {
+    const { component } = createComponent();
+    const canSendSpy = spyOn(component as any, 'canSend').and.returnValue(false);
+    const sendSpy = spyOn(component, 'sendMessage');
+    const preventSpy = jasmine.createSpy('pd');
+
+    component.onMessageKeydown({ key: 'Enter', shiftKey: false, preventDefault: preventSpy } as any);
+
+    expect(preventSpy).toHaveBeenCalled();
+    expect(canSendSpy).toHaveBeenCalled();
+    expect(sendSpy).not.toHaveBeenCalled();
+  });
+
+  it('clearAttachments revokes previews', () => {
+    const { component } = createComponent();
+    const revokeSpy = spyOn(URL, 'revokeObjectURL');
+    component.attachments$.next([{
+      id: 'a1',
+      file: new File(['x'], 'x.txt'),
+      type: 'DOCUMENT',
+      displayName: 'x',
+      sizeBytes: 1,
+      altText: '',
+      wasCompressed: false,
+      status: 'DRAFT',
+      progress: 0,
+      previewUrl: 'blob:test'
+    } as any]);
+
+    (component as any).clearAttachments();
+
+    expect(revokeSpy).toHaveBeenCalledWith('blob:test');
+    expect(component.attachmentItems.length).toBe(0);
+  });
+
+  it('cancelUpload returns when item missing or no uploadId', () => {
+    const { component } = createComponent();
+    component.attachments$.next([{
+      id: 'a1',
+      file: new File(['x'], 'x.txt'),
+      type: 'DOCUMENT',
+      displayName: 'x.txt',
+      sizeBytes: 1,
+      altText: '',
+      wasCompressed: false,
+      status: 'UPLOADING',
+      progress: 0
+    } as any]);
+
+    component.cancelUpload('missing');
+    component.cancelUpload('a1');
+
+    expect(messageServiceSpy.cancelAttachmentUpload).not.toHaveBeenCalled();
+  });
+
+  it('cancelUpload cancels active upload and removes attachment', () => {
+    const { component } = createComponent();
+    const cancelSpy = jasmine.createSpy('cancel');
+    const completeSpy = jasmine.createSpy('complete');
+    const unsubscribeSpy = jasmine.createSpy('unsubscribe');
+    const cancel$ = { isStopped: false, next: cancelSpy, complete: completeSpy } as any;
+    (component as any).uploadCancelMap.set('a1', cancel$);
+    (component as any).uploadSubscriptions.set('a1', { unsubscribe: unsubscribeSpy });
+    component.attachments$.next([{
+      id: 'a1',
+      file: new File(['x'], 'x.txt'),
+      type: 'DOCUMENT',
+      displayName: 'x.txt',
+      sizeBytes: 1,
+      altText: '',
+      wasCompressed: false,
+      status: 'UPLOADING',
+      progress: 0,
+      uploadId: 'upload1'
+    } as any]);
+
+    component.cancelUpload('a1');
+
+    expect(cancelSpy).toHaveBeenCalled();
+    expect(completeSpy).toHaveBeenCalled();
+    expect(unsubscribeSpy).toHaveBeenCalled();
+    expect(messageServiceSpy.cancelAttachmentUpload).toHaveBeenCalledWith('upload1');
+    expect(component.attachmentItems.length).toBe(0);
+  });
+
+  it('triggerFilePicker clicks input when available', () => {
+    const { component } = createComponent();
+    const input = document.createElement('input');
+    const clickSpy = spyOn(input, 'click');
+    component.fileInput = new ElementRef(input);
+
+    component.triggerFilePicker();
+
+    expect(clickSpy).toHaveBeenCalled();
+  });
+
+  it('removeAttachment revokes preview urls', () => {
+    const { component } = createComponent();
+    const revokeSpy = spyOn(URL, 'revokeObjectURL');
+    component.attachments$.next([{
+      id: 'a1',
+      file: new File(['x'], 'x.txt'),
+      type: 'DOCUMENT',
+      displayName: 'x.txt',
+      sizeBytes: 1,
+      altText: '',
+      wasCompressed: false,
+      status: 'DRAFT',
+      progress: 0,
+      previewUrl: 'blob:preview'
+    } as any]);
+
+    component.removeAttachment('a1');
+
+    expect(revokeSpy).toHaveBeenCalledWith('blob:preview');
+    expect(component.attachmentItems.length).toBe(0);
+  });
+
+  it('retryUpload returns early when not failed', () => {
+    const { component } = createComponent();
+    component.attachments$.next([{
+      id: 'a1',
+      file: new File(['x'], 'x.txt'),
+      type: 'DOCUMENT',
+      displayName: 'x.txt',
+      sizeBytes: 1,
+      altText: '',
+      wasCompressed: false,
+      status: 'UPLOADING',
+      progress: 0,
+      uploadId: 'u1'
+    } as any]);
+    spyOn(component as any, 'startUpload');
+
+    component.retryUpload('a1');
+
+    expect((component as any).startUpload).not.toHaveBeenCalled();
+  });
+
+  it('ensureConversationNavigation navigates when no selection', () => {
+    const { component } = createComponent();
+    component.selectedConversationId = null;
+
+    (component as any).ensureConversationNavigation({ conversationId: 44 } as any);
+
+    expect(router.navigate).toHaveBeenCalledWith(['/messages', 44]);
+  });
+
+  it('updateConversationPreview keeps unread count for outgoing message', () => {
+    const { component } = createComponent();
+    component.conversations = [{ id: 5, participantUsername: 'bob', unreadCount: 2 } as any];
+    component.selectedConversationId = 10;
+
+    (component as any).updateConversationPreview({
+      id: 1,
+      conversationId: 5,
+      senderUsername: 'alice',
+      recipientUsername: 'bob',
+      content: 'hello',
+      attachments: [],
+      createdAt: nowIso,
+      isRead: false
+    } as any);
+
+    expect(component.conversations[0].unreadCount).toBe(2);
   });
 });

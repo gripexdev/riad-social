@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ElementRef } from '@angular/core';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
@@ -170,6 +171,13 @@ describe('ProfileComponent', () => {
     expect(component.avatarPreviewUrl).toBe('blob:avatar');
   });
 
+  it('handles empty avatar selection', () => {
+    const input = document.createElement('input');
+    Object.defineProperty(input, 'files', { value: [] });
+    component.onAvatarSelected({ currentTarget: input } as any);
+    expect(component.errorMessage).toBeNull();
+  });
+
   it('unfollows when already following', () => {
     component.profile = {
       username: 'bob',
@@ -202,6 +210,13 @@ describe('ProfileComponent', () => {
     };
     component.startMessage();
     expect(router.navigate).toHaveBeenCalledWith(['/messages'], { queryParams: { recipient: 'alice' } });
+  });
+
+  it('does not start message without profile', () => {
+    spyOn(router, 'navigate');
+    component.profile = null;
+    component.startMessage();
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 
   it('starts and cancels edit', () => {
@@ -263,5 +278,19 @@ describe('ProfileComponent', () => {
     component.removePost(1);
     expect(component.profile.posts.length).toBe(1);
     expect(component.profile.postCount).toBe(1);
+  });
+
+  it('clears avatar preview on destroy', () => {
+    const input = document.createElement('input');
+    input.value = 'x';
+    component.avatarInput = new ElementRef(input);
+    component.avatarPreviewUrl = 'blob:preview';
+    const revokeSpy = spyOn(URL, 'revokeObjectURL');
+
+    component.ngOnDestroy();
+
+    expect(revokeSpy).toHaveBeenCalledWith('blob:preview');
+    expect(component.avatarPreviewUrl).toBeNull();
+    expect(input.value).toBe('');
   });
 });

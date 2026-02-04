@@ -71,6 +71,12 @@ describe('MessageRealtimeService', () => {
     expect((service as any).client).toBeNull();
   });
 
+  it('disconnect no-ops when client is null', () => {
+    (service as any).client = null;
+    service.disconnect();
+    expect((service as any).client).toBeNull();
+  });
+
   it('skips connect when already active', () => {
     (service as any).client = { active: true };
     const activateSpy = spyOn(Client.prototype, 'activate');
@@ -78,15 +84,75 @@ describe('MessageRealtimeService', () => {
     expect(activateSpy).not.toHaveBeenCalled();
   });
 
-  it('connects when token is available', fakeAsync(() => {
+  it('does not activate if client becomes active before loader resolves', fakeAsync(() => {
     const activateSpy = spyOn(Client.prototype, 'activate').and.callFake(() => {});
     const authService = TestBed.inject(AuthService) as any;
     authService.getToken = () => 'token';
     (window as any).SockJS = function SockJSMock() {};
 
     service.connect();
+    (service as any).client = { active: true };
 
     flushMicrotasks();
+    expect(activateSpy).not.toHaveBeenCalled();
+  }));
+
+  it('connects when token is available', fakeAsync(() => {
+    spyOn(Client.prototype, 'activate').and.callFake(() => {});
+    const authService = TestBed.inject(AuthService) as any;
+    authService.getToken = () => 'token';
+    const originalSockJS = (window as any).SockJS;
+    (window as any).SockJS = function SockJSMock() {};
+
+    service.connect();
+
+    flushMicrotasks();
+    expect((service as any).client).toBeTruthy();
+    (window as any).SockJS = originalSockJS;
+  }));
+
+  it('logs error when SockJS loader rejects', fakeAsync(() => {
+    const consoleSpy = spyOn(console, 'error');
+    const authService = TestBed.inject(AuthService) as any;
+    authService.getToken = () => 'token';
+    const originalSockJS = (window as any).SockJS;
+    try {
+      (window as any).SockJS = {
+        then: (_resolve: any, reject: any) => reject(new Error('fail'))
+      };
+
+      service.connect();
+      flushMicrotasks();
+
+      expect(consoleSpy).toHaveBeenCalled();
+    } finally {
+      (window as any).SockJS = originalSockJS;
+    }
+  }));
+
+  it('subscribes on connect and logs websocket errors', fakeAsync(() => {
+    const activateSpy = spyOn(Client.prototype, 'activate').and.callFake(() => {});
+    const subscribeSpy = spyOn(Client.prototype, 'subscribe').and.callFake(() => ({ unsubscribe() {} } as any));
+    const consoleErrorSpy = spyOn(console, 'error');
+    const consoleWarnSpy = spyOn(console, 'warn');
+    const authService = TestBed.inject(AuthService) as any;
+    authService.getToken = () => 'token';
+    (window as any).SockJS = function SockJSMock() {};
+
+    service.connect();
+    flushMicrotasks();
+
     expect(activateSpy).toHaveBeenCalled();
+    const client = (service as any).client as Client;
+    client.onConnect?.({} as any);
+    expect(subscribeSpy).toHaveBeenCalledWith('/user/queue/messages', jasmine.any(Function));
+    expect(subscribeSpy).toHaveBeenCalledWith('/user/queue/typing', jasmine.any(Function));
+
+    client.onStompError?.({} as any);
+    client.onWebSocketError?.({} as any);
+    client.onWebSocketClose?.({} as any);
+
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    expect(consoleWarnSpy).toHaveBeenCalled();
   }));
 });
