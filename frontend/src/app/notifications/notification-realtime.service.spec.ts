@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed, fakeAsync, flushMicrotasks } from '@angular/core/testing';
 import { NgZone } from '@angular/core';
 import { NotificationRealtimeService } from './notification-realtime.service';
 import { AuthService } from '../auth/auth.service';
@@ -65,7 +65,7 @@ describe('NotificationRealtimeService', () => {
     expect((service as any).client).toBeNull();
   });
 
-  it('connects when token is available', () => {
+  it('connects when token is available', fakeAsync(() => {
     const activateSpy = spyOn(Client.prototype, 'activate').and.callFake(() => {});
     const authService = TestBed.inject(AuthService) as any;
     authService.getToken = () => 'token';
@@ -73,8 +73,9 @@ describe('NotificationRealtimeService', () => {
 
     service.connect();
 
+    flushMicrotasks();
     expect(activateSpy).toHaveBeenCalled();
-  });
+  }));
 
   it('disconnects active client', () => {
     const deactivateSpy = jasmine.createSpy('deactivate');

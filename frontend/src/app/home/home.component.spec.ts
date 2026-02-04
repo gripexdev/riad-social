@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
@@ -113,10 +113,11 @@ describe('HomeComponent', () => {
     expect(component.autoOpenCommentPostId).toBeNull();
   });
 
-  it('triggers auto open when focused post exists', () => {
+  it('triggers auto open when focused post exists', fakeAsync(() => {
     component.posts = [{ id: 3 } as any];
     component.focusedPostId = 3;
-    (component as any).ensureFocusedPost();
+    (component as any).triggerAutoOpen();
+    tick(0);
     expect(component.autoOpenCommentPostId).toBe(3);
-  });
+  }));
 });

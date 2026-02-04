@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed, fakeAsync, flushMicrotasks } from '@angular/core/testing';
 import { NgZone } from '@angular/core';
 import { Client } from '@stomp/stompjs';
 import { MessageRealtimeService } from './message-realtime.service';
@@ -63,7 +63,22 @@ describe('MessageRealtimeService', () => {
     expect(publishSpy).not.toHaveBeenCalled();
   });
 
-  it('connects when token is available', () => {
+  it('disconnects active client', () => {
+    const deactivateSpy = jasmine.createSpy('deactivate');
+    (service as any).client = { active: true, deactivate: deactivateSpy };
+    service.disconnect();
+    expect(deactivateSpy).toHaveBeenCalled();
+    expect((service as any).client).toBeNull();
+  });
+
+  it('skips connect when already active', () => {
+    (service as any).client = { active: true };
+    const activateSpy = spyOn(Client.prototype, 'activate');
+    service.connect();
+    expect(activateSpy).not.toHaveBeenCalled();
+  });
+
+  it('connects when token is available', fakeAsync(() => {
     const activateSpy = spyOn(Client.prototype, 'activate').and.callFake(() => {});
     const authService = TestBed.inject(AuthService) as any;
     authService.getToken = () => 'token';
@@ -71,6 +86,7 @@ describe('MessageRealtimeService', () => {
 
     service.connect();
 
+    flushMicrotasks();
     expect(activateSpy).toHaveBeenCalled();
-  });
+  }));
 });

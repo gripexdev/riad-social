@@ -66,6 +66,10 @@ describe('AuthService', () => {
     expect(service.getUsername()).toBeNull();
   });
 
+  it('returns null when no token is stored', () => {
+    expect(service.getUsername()).toBeNull();
+  });
+
   it('reports authentication state and clears token', () => {
     localStorage.setItem('jwt_token', 'token');
     expect(service.isAuthenticated()).toBeTrue();
