@@ -1,18 +1,43 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
   let service: AuthService;
+  let httpMock: HttpTestingController;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule]
     });
     service = TestBed.inject(AuthService);
+    httpMock = TestBed.inject(HttpTestingController);
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    httpMock.verify();
+    localStorage.clear();
   });
 
   it('should be created', () => {
     expect(service).toBeTruthy();
+  });
+
+  it('stores token on login', () => {
+    service.login({ username: 'alice', password: 'pass' }).subscribe();
+
+    const req = httpMock.expectOne('http://localhost:8080/api/auth/login');
+    req.flush({ token: 'jwt-token' });
+
+    expect(service.getToken()).toBe('jwt-token');
+  });
+
+  it('decodes username from token', () => {
+    const payload = btoa(JSON.stringify({ sub: 'alice' }));
+    const token = `header.${payload}.sig`;
+    localStorage.setItem('jwt_token', token);
+
+    expect(service.getUsername()).toBe('alice');
   });
 });

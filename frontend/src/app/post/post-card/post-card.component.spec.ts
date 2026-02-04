@@ -1,15 +1,65 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { RouterTestingModule } from '@angular/router/testing';
+import { of } from 'rxjs';
+import { OverlayModule } from '@angular/cdk/overlay';
 import { PostCardComponent } from './post-card.component';
+import { PostService } from '../post.service';
+import { AuthService } from '../../auth/auth.service';
+import { PostDialogService } from '../post-dialog.service';
+import { ProfileService } from '../../profile/profile.service';
 
 describe('PostCardComponent', () => {
   let component: PostCardComponent;
   let fixture: ComponentFixture<PostCardComponent>;
+  let postService: jasmine.SpyObj<PostService>;
 
   beforeEach(async () => {
+    postService = jasmine.createSpyObj<PostService>('PostService', [
+      'addComment',
+      'toggleLike',
+      'toggleReplyReaction',
+      'getPostById',
+      'deleteComment',
+      'updatePost',
+      'deletePost'
+    ]);
+    postService.addComment.and.returnValue(of({
+      id: 2,
+      content: 'reply',
+      username: 'me',
+      createdAt: new Date().toISOString(),
+      parentId: 1,
+      replies: []
+    }));
+    postService.toggleLike.and.returnValue(of({
+      id: 1,
+      imageUrl: 'image',
+      caption: 'caption',
+      username: 'owner',
+      createdAt: new Date().toISOString(),
+      likesCount: 1,
+      likedByCurrentUser: true,
+      comments: []
+    }));
+    postService.getPostById.and.returnValue(of({
+      id: 1,
+      imageUrl: 'image',
+      caption: 'caption',
+      username: 'owner',
+      createdAt: new Date().toISOString(),
+      likesCount: 0,
+      likedByCurrentUser: false,
+      comments: []
+    }));
     await TestBed.configureTestingModule({
-      imports: [PostCardComponent, HttpClientTestingModule, RouterTestingModule]
+      imports: [PostCardComponent, HttpClientTestingModule, RouterTestingModule, OverlayModule],
+      providers: [
+        { provide: PostService, useValue: postService },
+        { provide: AuthService, useValue: { getUsername: () => 'me' } },
+        { provide: PostDialogService, useValue: { activeDeletePostId$: of(null), openDelete: () => {}, closeDelete: () => {} } },
+        { provide: ProfileService, useValue: { getMentionSuggestions: () => of([]), searchUsers: () => of([]) } }
+      ]
     })
     .compileComponents();
 
@@ -30,5 +80,35 @@ describe('PostCardComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('parses mentions in content', () => {
+    const parts = component.parseContent('hello @alice');
+    expect(parts.length).toBe(2);
+    expect(parts[1].isMention).toBeTrue();
+    expect(parts[1].username).toBe('alice');
+  });
+
+  it('toggles replies expansion', () => {
+    const comment = { id: 1, content: 'hi', username: 'bob', createdAt: new Date().toISOString() } as any;
+    expect(component.isRepliesExpanded(comment)).toBeFalse();
+    component.toggleReplies(comment);
+    expect(component.isRepliesExpanded(comment)).toBeTrue();
+  });
+
+  it('starts and cancels reply', () => {
+    const comment = { id: 1, content: 'hi', username: 'bob', createdAt: new Date().toISOString() } as any;
+    component.startReply(comment);
+    expect(component.activeReplyCommentId).toBe(1);
+    component.cancelReply();
+    expect(component.activeReplyCommentId).toBeNull();
+  });
+
+  it('adds reply and clears form', () => {
+    const comment = { id: 1, content: 'hi', username: 'bob', createdAt: new Date().toISOString(), replies: [] } as any;
+    component.startReply(comment);
+    component.replyForm.setValue({ reply: 'reply' });
+    component.addReply(comment);
+    expect(postService.addComment).toHaveBeenCalled();
   });
 });
