@@ -292,6 +292,12 @@ describe('PostCardComponent', () => {
     expect(component.getReactionSummary({} as any)).toBe('');
   });
 
+  it('hasReaction checks viewer selection', () => {
+    const reply = { viewerReaction: '👍' } as any;
+    expect(component.hasReaction(reply, '👍')).toBeTrue();
+    expect(component.hasReaction(reply, '🔥')).toBeFalse();
+  });
+
   it('toggles comments visibility', () => {
     component.showComments = false;
     component.toggleComments();
@@ -341,6 +347,13 @@ describe('PostCardComponent', () => {
     expect(postService.updatePost).not.toHaveBeenCalled();
   });
 
+  it('does not save when not owner', () => {
+    component.canEdit = true;
+    component.post.username = 'other';
+    component.saveEdit();
+    expect(postService.updatePost).not.toHaveBeenCalled();
+  });
+
   it('does not open delete when not allowed', () => {
     component.canDelete = false;
     component.post.username = 'me';
@@ -352,5 +365,11 @@ describe('PostCardComponent', () => {
     component.isSaving = true;
     component.closeDeleteConfirm();
     expect(postDialogService.closeDelete).not.toHaveBeenCalled();
+  });
+
+  it('closeDeleteConfirm calls service when allowed', () => {
+    component.isSaving = false;
+    component.closeDeleteConfirm();
+    expect(postDialogService.closeDelete).toHaveBeenCalled();
   });
 });

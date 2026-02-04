@@ -155,6 +155,11 @@ describe('ProfileComponent', () => {
     expect(component.displayAvatarUrl).toBe('preview');
   });
 
+  it('returns profile initial fallback', () => {
+    component.profile = null;
+    expect(component.profileInitial).toBe('?');
+  });
+
   it('accepts valid image avatar', () => {
     const file = new File(['data'], 'avatar.png', { type: 'image/png' });
     const input = document.createElement('input');

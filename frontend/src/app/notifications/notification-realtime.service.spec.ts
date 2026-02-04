@@ -52,6 +52,19 @@ describe('NotificationRealtimeService', () => {
     expect(url).toContain('ws?token=');
   });
 
+  it('builds secure socket url when https', () => {
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      value: { protocol: 'https:', hostname: 'example.com' },
+      configurable: true
+    });
+
+    const url = (service as any).buildSocketUrl('token');
+    expect(url).toBe('https://example.com:8080/ws?token=token');
+
+    Object.defineProperty(window, 'location', { value: originalLocation });
+  });
+
   it('disconnects active client', () => {
     const deactivateSpy = jasmine.createSpy('deactivate');
     (service as any).client = { deactivate: deactivateSpy } as any;

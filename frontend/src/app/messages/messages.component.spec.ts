@@ -307,6 +307,14 @@ describe('MessagesComponent', () => {
     expect((component as any).mimeFromType('DOCUMENT')).toBe('application/pdf');
   });
 
+  it('trackBy helpers return ids', () => {
+    const { component } = createComponent();
+    expect(component.trackByConversationId(0, { id: 5 } as any)).toBe(5);
+    expect(component.trackByMessageId(0, { id: 7 } as any)).toBe(7);
+    expect(component.trackByAttachmentId(0, { id: 9 } as any)).toBe(9);
+    expect(component.trackByAttachmentItemId(0, { id: 'a1' } as any)).toBe('a1');
+  });
+
   it('returns max bytes for each type', () => {
     const { component } = createComponent();
     expect((component as any).maxBytesForType('IMAGE')).toBe(component.maxImageBytes);

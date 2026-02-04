@@ -67,6 +67,13 @@ describe('PostService', () => {
     req.flush({});
   });
 
+  it('adds comment without parent id', () => {
+    service.addComment(1, 'hello').subscribe();
+    const req = httpMock.expectOne('http://localhost:8080/api/posts/1/comment');
+    expect(req.request.body).toEqual({ content: 'hello', parentCommentId: null });
+    req.flush({});
+  });
+
   it('toggles reply reaction', () => {
     service.toggleReplyReaction(1, 3, 'ðŸ‘').subscribe();
     const req = httpMock.expectOne('http://localhost:8080/api/posts/1/comments/3/reactions');

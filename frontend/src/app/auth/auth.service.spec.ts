@@ -33,6 +33,14 @@ describe('AuthService', () => {
     expect(service.getToken()).toBe('jwt-token');
   });
 
+  it('stores token on register', () => {
+    service.register({ username: 'alice' }).subscribe();
+    const req = httpMock.expectOne('http://localhost:8080/api/auth/register');
+    expect(req.request.method).toBe('POST');
+    req.flush({ token: 'reg-token' });
+    expect(service.getToken()).toBe('reg-token');
+  });
+
   it('requests password reset endpoints', () => {
     service.forgotPassword('a@b.com').subscribe();
     const forgotReq = httpMock.expectOne('http://localhost:8080/api/auth/forgot-password');
