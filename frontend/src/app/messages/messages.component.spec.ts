@@ -256,6 +256,105 @@ describe('MessagesComponent', () => {
     expect(component.getAttachmentStatusClass({ status: 'READY' } as any)).toBe('status-ready');
   });
 
+  it('builds conversation previews with sender prefix', () => {
+    const { component } = createComponent();
+    component.conversations = [{
+      id: 1,
+      participantUsername: 'bob',
+      lastMessagePreview: 'hello',
+      lastMessageSenderUsername: 'alice'
+    } as any];
+    component.selectedConversationId = 1;
+
+    expect(component.getConversationPreview(component.conversations[0])).toBe('You: hello');
+  });
+
+  it('builds attachment previews by type', () => {
+    const { component } = createComponent();
+    const photo = (component as any).buildPreview('', [{ type: 'IMAGE' } as any]);
+    const video = (component as any).buildPreview('', [{ type: 'VIDEO' } as any]);
+    const doc = (component as any).buildPreview('', [{ type: 'DOCUMENT' } as any]);
+    const many = (component as any).buildPreview('', [{ type: 'IMAGE' } as any, { type: 'VIDEO' } as any]);
+
+    expect(photo).toBe('Photo');
+    expect(video).toBe('Video');
+    expect(doc).toBe('Document');
+    expect(many).toBe('2 attachments');
+  });
+
+  it('trims long previews', () => {
+    const { component } = createComponent();
+    const long = 'a'.repeat(component.previewLimit + 10);
+    const preview = (component as any).buildPreview(long, []);
+    expect(preview.endsWith('...')).toBeTrue();
+  });
+
+  it('resolves attachment types by extension', () => {
+    const { component } = createComponent();
+    const jpg = new File(['x'], 'photo.jpg', { type: '' });
+    const mp4 = new File(['x'], 'clip.mp4', { type: '' });
+    const pdf = new File(['x'], 'doc.pdf', { type: '' });
+
+    expect((component as any).resolveAttachmentType(jpg)).toBe('IMAGE');
+    expect((component as any).resolveAttachmentType(mp4)).toBe('VIDEO');
+    expect((component as any).resolveAttachmentType(pdf)).toBe('DOCUMENT');
+  });
+
+  it('updates alt text with length limit', () => {
+    const { component } = createComponent();
+    const item = { id: 'a1', file: new File(['a'], 'photo.jpg', { type: 'image/jpeg' }), type: 'IMAGE', displayName: 'photo.jpg', sizeBytes: 10, altText: '', wasCompressed: false, status: 'DRAFT', progress: 0 } as any;
+    component.attachments$.next([item]);
+
+    const long = '<' + 'a'.repeat(component.maxAltTextLength + 10) + '>';
+    component.updateAltText('a1', { target: { value: long } } as any);
+
+    expect(component.attachmentItems[0].altText.length).toBe(component.maxAltTextLength);
+  });
+
+  it('applies recipient navigation when conversation exists', () => {
+    const { component } = createComponent();
+    component.conversations = [{ id: 9, participantUsername: 'bob' } as any];
+    (component as any).pendingRecipientUsername = 'bob';
+    component.selectedConversationId = null;
+    spyOn(component as any, 'hasDraft').and.returnValue(false);
+
+    (component as any).applyRecipientNavigation();
+
+    expect(router.navigate).toHaveBeenCalledWith(['/messages', 9]);
+  });
+
+  it('prepares composer for new recipient', () => {
+    const { component } = createComponent();
+    (component as any).prepareComposer('carol');
+    expect(component.isComposingNew).toBeTrue();
+    expect(component.recipientControl.value).toBe('carol');
+  });
+
+  it('finds conversations by username', () => {
+    const { component } = createComponent();
+    component.conversations = [{ id: 1, participantUsername: 'Bob' } as any];
+    const found = (component as any).findConversationByUsername('bob');
+    expect(found?.id).toBe(1);
+  });
+
+  it('marks conversations read updates counts', () => {
+    const { component } = createComponent();
+    component.conversations = [{ id: 1, participantUsername: 'bob', unreadCount: 3 } as any];
+    component.selectedConversation = component.conversations[0];
+    messageServiceSpy.markConversationRead.and.returnValue(of(void 0));
+
+    (component as any).markConversationRead(1);
+
+    expect(component.conversations[0].unreadCount).toBe(0);
+  });
+
+  it('stops typing on blur', () => {
+    const { component } = createComponent();
+    const spy = spyOn(component as any, 'stopTypingSignal');
+    component.onMessageBlur();
+    expect(spy).toHaveBeenCalled();
+  });
+
   it('canSend enforces recipient and content rules', () => {
     const { component } = createComponent();
     component.recipientControl.setValue('');
