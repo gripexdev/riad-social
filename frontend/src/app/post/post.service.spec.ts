@@ -44,4 +44,20 @@ describe('PostService', () => {
     expect(req.request.method).toBe('GET');
     req.flush(posts);
   });
+
+  it('adds comment', () => {
+    service.addComment(1, 'hello', 2).subscribe();
+    const req = httpMock.expectOne('http://localhost:8080/api/posts/1/comment');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ content: 'hello', parentCommentId: 2 });
+    req.flush({});
+  });
+
+  it('toggles reply reaction', () => {
+    service.toggleReplyReaction(1, 3, 'ðŸ‘').subscribe();
+    const req = httpMock.expectOne('http://localhost:8080/api/posts/1/comments/3/reactions');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ emoji: 'ðŸ‘' });
+    req.flush({});
+  });
 });
