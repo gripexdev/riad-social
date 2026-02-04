@@ -2,13 +2,23 @@ import { TestBed } from '@angular/core/testing';
 import { HttpHandlerFn, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 
 import { tokenInterceptor } from './token.interceptor';
+import { AuthService } from './auth.service';
 
 describe('tokenInterceptor', () => {
   const interceptor: HttpInterceptorFn = (req, next) => 
     TestBed.runInInjectionContext(() => tokenInterceptor(req, next));
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: AuthService,
+          useValue: {
+            getToken: () => localStorage.getItem('jwt_token')
+          }
+        }
+      ]
+    });
     localStorage.clear();
   });
 

@@ -16,10 +16,21 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CommentReactionService {
-
-    private static final Set<String> ALLOWED_EMOJIS = Set.of("❤️", "😂", "😮", "😢", "😡", "👍");
-
-    private final CommentReactionRepository reactionRepository;
+    private static final String EMOJI_HEART = "\u2764\uFE0F";
+    private static final String EMOJI_LAUGH = "\uD83D\uDE02";
+    private static final String EMOJI_WOW = "\uD83D\uDE2E";
+    private static final String EMOJI_SAD = "\uD83D\uDE22";
+    private static final String EMOJI_ANGRY = "\uD83D\uDE21";
+    private static final String EMOJI_THUMBS_UP = "\uD83D\uDC4D";
+    private static final Set<String> ALLOWED_EMOJIS = Set.of(
+            EMOJI_HEART,
+            EMOJI_LAUGH,
+            EMOJI_WOW,
+            EMOJI_SAD,
+            EMOJI_ANGRY,
+            EMOJI_THUMBS_UP
+    );
+private final CommentReactionRepository reactionRepository;
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
 

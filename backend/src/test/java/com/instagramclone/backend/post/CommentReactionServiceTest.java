@@ -26,6 +26,9 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class CommentReactionServiceTest {
 
+    private static final String EMOJI_THUMBS_UP = "\uD83D\uDC4D";
+    private static final String EMOJI_LAUGH = "\uD83D\uDE02";
+
     @Mock
     private CommentReactionRepository reactionRepository;
 
@@ -54,7 +57,7 @@ class CommentReactionServiceTest {
         when(commentRepository.findById(2L)).thenReturn(Optional.of(reply));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> service.toggleReaction(1L, 2L, "ðŸ‘", "user"));
+                () -> service.toggleReaction(1L, 2L, EMOJI_THUMBS_UP, "user"));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
     }
@@ -65,13 +68,13 @@ class CommentReactionServiceTest {
         Comment reply = buildReply(1L);
         User user = new User();
         user.setUsername("user");
-        CommentReaction existing = new CommentReaction(reply, user, "ðŸ‘");
+        CommentReaction existing = new CommentReaction(reply, user, EMOJI_THUMBS_UP);
 
         when(commentRepository.findById(2L)).thenReturn(Optional.of(reply));
         when(userRepository.findByUsername("user")).thenReturn(Optional.of(user));
         when(reactionRepository.findByCommentIdAndUserUsername(2L, "user")).thenReturn(Optional.of(existing));
 
-        service.toggleReaction(1L, 2L, "ðŸ‘", "user");
+        service.toggleReaction(1L, 2L, EMOJI_THUMBS_UP, "user");
 
         verify(reactionRepository).delete(existing);
         verify(reactionRepository, never()).save(existing);
@@ -83,14 +86,14 @@ class CommentReactionServiceTest {
         Comment reply = buildReply(1L);
 
         when(reactionRepository.findReactionCountsByCommentIds(Set.of(2L)))
-                .thenReturn(List.of(new StubProjection(2L, "ðŸ‘", 2)));
+                .thenReturn(List.of(new StubProjection(2L, EMOJI_THUMBS_UP, 2)));
         when(reactionRepository.findByCommentIdInAndUserUsername(Set.of(2L), "user"))
-                .thenReturn(List.of(new CommentReaction(reply, new User(), "ðŸ‘")));
+                .thenReturn(List.of(new CommentReaction(reply, new User(), EMOJI_THUMBS_UP)));
 
         CommentReactionService.CommentReactionLookup lookup = service.buildLookup(Set.of(reply), "user");
 
         assertEquals(1, lookup.reactionsByComment().get(2L).size());
-        assertEquals("ðŸ‘", lookup.viewerReactions().get(2L));
+        assertEquals(EMOJI_THUMBS_UP, lookup.viewerReactions().get(2L));
     }
 
     @Test
@@ -98,7 +101,7 @@ class CommentReactionServiceTest {
         CommentReactionService service = new CommentReactionService(reactionRepository, commentRepository, userRepository);
 
         when(reactionRepository.findReactionCountsByCommentId(2L))
-                .thenReturn(List.of(new StubProjection(2L, "ðŸ˜‚", 1)));
+                .thenReturn(List.of(new StubProjection(2L, EMOJI_LAUGH, 1)));
 
         CommentReactionSummaryResponse summary = service.buildSummary(2L, "");
 
