@@ -322,6 +322,44 @@ describe('MessagesComponent', () => {
     expect((component as any).maxBytesForType('DOCUMENT')).toBe(component.maxDocumentBytes);
   });
 
+  it('returns null for unsupported attachment types', () => {
+    const { component } = createComponent();
+    const file = new File(['x'], 'archive.zip', { type: 'application/zip' });
+    expect((component as any).resolveAttachmentType(file)).toBeNull();
+  });
+
+  it('buildUploadRequests sets altText only for images', () => {
+    const { component } = createComponent();
+    const items = [
+      {
+        id: 'a1',
+        file: new File(['x'], 'photo.jpg', { type: 'image/jpeg' }),
+        type: 'IMAGE',
+        displayName: 'photo.jpg',
+        sizeBytes: 1,
+        altText: 'alt',
+        wasCompressed: false,
+        status: 'DRAFT',
+        progress: 0
+      },
+      {
+        id: 'a2',
+        file: new File(['x'], 'doc.pdf', { type: 'application/pdf' }),
+        type: 'DOCUMENT',
+        displayName: 'doc.pdf',
+        sizeBytes: 1,
+        altText: 'ignored',
+        wasCompressed: false,
+        status: 'DRAFT',
+        progress: 0
+      }
+    ] as any;
+
+    const requests = (component as any).buildUploadRequests(items);
+    expect(requests[0].altText).toBe('alt');
+    expect(requests[1].altText).toBeNull();
+  });
+
   it('updates alt text with length limit', () => {
     const { component } = createComponent();
     const item = { id: 'a1', file: new File(['a'], 'photo.jpg', { type: 'image/jpeg' }), type: 'IMAGE', displayName: 'photo.jpg', sizeBytes: 10, altText: '', wasCompressed: false, status: 'DRAFT', progress: 0 } as any;

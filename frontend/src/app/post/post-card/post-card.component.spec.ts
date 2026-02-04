@@ -332,6 +332,12 @@ describe('PostCardComponent', () => {
     expect(component.showActions).toBeTrue();
   });
 
+  it('hasActions returns false when not owner', () => {
+    component.post.username = 'other';
+    component.canEdit = true;
+    expect(component.hasActions).toBeFalse();
+  });
+
   it('does not start edit when not owner', () => {
     component.canEdit = true;
     component.post.username = 'other';

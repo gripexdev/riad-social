@@ -106,4 +106,10 @@ describe('HomeComponent', () => {
     const parseNumber = (component as any).parseNumber;
     expect(parseNumber.call(component, 'abc')).toBeNull();
   });
+
+  it('clears auto open when no focused post', () => {
+    component.focusedPostId = null;
+    (component as any).ensureFocusedPost();
+    expect(component.autoOpenCommentPostId).toBeNull();
+  });
 });
