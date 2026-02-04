@@ -52,6 +52,7 @@ describe('PostCardComponent', () => {
       likedByCurrentUser: false,
       comments: []
     }));
+    postService.deleteComment.and.returnValue(of(void 0));
     await TestBed.configureTestingModule({
       imports: [PostCardComponent, HttpClientTestingModule, RouterTestingModule, OverlayModule],
       providers: [

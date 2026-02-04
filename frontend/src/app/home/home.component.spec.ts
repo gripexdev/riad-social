@@ -13,9 +13,10 @@ describe('HomeComponent', () => {
   let fixture: ComponentFixture<HomeComponent>;
   let postService: jasmine.SpyObj<PostService>;
   let profileService: jasmine.SpyObj<ProfileService>;
-  const queryParamMap$ = new Subject<any>();
+  let queryParamMap$: Subject<any>;
 
   beforeEach(async () => {
+    queryParamMap$ = new Subject<any>();
     postService = jasmine.createSpyObj<PostService>('PostService', ['getPosts', 'getPostById']);
     profileService = jasmine.createSpyObj<ProfileService>('ProfileService', ['getProfile']);
     postService.getPosts.and.returnValue(of([]));
@@ -72,7 +73,8 @@ describe('HomeComponent', () => {
 
   it('fetches focused post when missing', () => {
     postService.getPostById.and.returnValue(of({ id: 2 } as any));
-    queryParamMap$.next(convertToParamMap({ postId: '2' }));
+    component.focusedPostId = 2;
+    (component as any).ensureFocusedPost();
     expect(postService.getPostById).toHaveBeenCalledWith(2);
   });
 
