@@ -52,7 +52,7 @@ class CommentReactionServiceTest {
     @Test
     void toggleReaction_requiresReply() {
         CommentReactionService service = new CommentReactionService(reactionRepository, commentRepository, userRepository);
-        Comment reply = buildReply(null);
+        Comment reply = buildTopLevelComment();
 
         when(commentRepository.findById(2L)).thenReturn(Optional.of(reply));
 
@@ -114,12 +114,22 @@ class CommentReactionServiceTest {
         User owner = new User();
         owner.setUsername("owner");
         Post post = new Post("image", "caption", owner);
-        post.setId(postId);
+        post.setId(postId == null ? 1L : postId);
         Comment parent = new Comment("parent", owner, post);
         parent.setId(1L);
         Comment reply = new Comment("reply", owner, post, parent);
         reply.setId(2L);
         return reply;
+    }
+
+    private Comment buildTopLevelComment() {
+        User owner = new User();
+        owner.setUsername("owner");
+        Post post = new Post("image", "caption", owner);
+        post.setId(1L);
+        Comment comment = new Comment("parent", owner, post);
+        comment.setId(2L);
+        return comment;
     }
 
     private static final class StubProjection implements CommentReactionCountProjection {

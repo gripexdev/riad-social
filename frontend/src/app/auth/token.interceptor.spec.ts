@@ -35,4 +35,14 @@ describe('tokenInterceptor', () => {
     };
     interceptor(req, handler);
   });
+
+  it('skips auth header for auth endpoints', () => {
+    localStorage.setItem('jwt_token', 'token');
+    const req = new HttpRequest('GET', '/api/auth/login');
+    const handler: HttpHandlerFn = (request) => {
+      expect(request.headers.get('Authorization')).toBeNull();
+      return { subscribe: () => {} } as any;
+    };
+    interceptor(req, handler);
+  });
 });

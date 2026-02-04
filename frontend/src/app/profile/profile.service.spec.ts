@@ -35,4 +35,11 @@ describe('ProfileService', () => {
     expect(req.request.params.get('limit')).toBe('4');
     req.flush([]);
   });
+
+  it('updates profile with bio only', () => {
+    service.updateProfile('hello').subscribe();
+    const req = httpMock.expectOne('http://localhost:8080/api/users/me');
+    expect(req.request.method).toBe('PUT');
+    req.flush({});
+  });
 });

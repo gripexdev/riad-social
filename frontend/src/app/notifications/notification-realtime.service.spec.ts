@@ -32,6 +32,15 @@ describe('NotificationRealtimeService', () => {
     (service as any).handleCount(message);
   });
 
+  it('handles json count payload', (done) => {
+    const message = { body: JSON.stringify({ count: 7 }) } as any;
+    service.onCount().subscribe((count) => {
+      expect(count).toBe(7);
+      done();
+    });
+    (service as any).handleCount(message);
+  });
+
   it('builds socket url', () => {
     const url = (service as any).buildSocketUrl('token');
     expect(url).toContain('ws?token=');

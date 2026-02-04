@@ -45,6 +45,20 @@ describe('PostService', () => {
     req.flush(posts);
   });
 
+  it('requests posts feed', () => {
+    service.getPosts().subscribe();
+    const req = httpMock.expectOne('http://localhost:8080/api/posts');
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
+
+  it('requests post by id', () => {
+    service.getPostById(4).subscribe();
+    const req = httpMock.expectOne('http://localhost:8080/api/posts/4');
+    expect(req.request.method).toBe('GET');
+    req.flush({});
+  });
+
   it('adds comment', () => {
     service.addComment(1, 'hello', 2).subscribe();
     const req = httpMock.expectOne('http://localhost:8080/api/posts/1/comment');

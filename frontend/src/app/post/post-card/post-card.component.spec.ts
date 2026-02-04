@@ -111,4 +111,29 @@ describe('PostCardComponent', () => {
     component.addReply(comment);
     expect(postService.addComment).toHaveBeenCalled();
   });
+
+  it('toggles like updates post', () => {
+    component.toggleLike();
+    expect(postService.toggleLike).toHaveBeenCalled();
+  });
+
+  it('adds comment to list', () => {
+    component.commentForm.setValue({ comment: 'hello' });
+    component.addComment();
+    expect(postService.addComment).toHaveBeenCalled();
+  });
+
+  it('deletes reply', () => {
+    const parent = { id: 1, replies: [{ id: 2, username: 'me' }] } as any;
+    const reply = parent.replies[0];
+    component.deleteReply(parent, reply);
+    expect(postService.deleteComment).toHaveBeenCalledWith(1, 2);
+  });
+
+  it('computes reaction summary', () => {
+    const reply = {
+      reactions: [{ emoji: '🙂', count: 2 }, { emoji: '👍', count: 1 }]
+    } as any;
+    expect(component.getReactionSummary(reply)).toContain('3');
+  });
 });
