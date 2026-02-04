@@ -61,6 +61,11 @@ describe('AuthService', () => {
     expect(service.getUsername()).toBe('alice');
   });
 
+  it('returns null on invalid token', () => {
+    localStorage.setItem('jwt_token', 'invalid.token');
+    expect(service.getUsername()).toBeNull();
+  });
+
   it('reports authentication state and clears token', () => {
     localStorage.setItem('jwt_token', 'token');
     expect(service.isAuthenticated()).toBeTrue();

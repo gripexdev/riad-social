@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { NgZone } from '@angular/core';
 import { NotificationRealtimeService } from './notification-realtime.service';
 import { AuthService } from '../auth/auth.service';
+import { Client } from '@stomp/stompjs';
 
 describe('NotificationRealtimeService', () => {
   let service: NotificationRealtimeService;
@@ -62,6 +63,17 @@ describe('NotificationRealtimeService', () => {
     (service as any).client = null;
     service.disconnect();
     expect((service as any).client).toBeNull();
+  });
+
+  it('connects when token is available', () => {
+    const activateSpy = spyOn(Client.prototype, 'activate').and.callFake(() => {});
+    const authService = TestBed.inject(AuthService) as any;
+    authService.getToken = () => 'token';
+    (window as any).SockJS = function SockJSMock() {};
+
+    service.connect();
+
+    expect(activateSpy).toHaveBeenCalled();
   });
 
   it('disconnects active client', () => {

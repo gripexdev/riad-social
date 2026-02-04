@@ -112,4 +112,11 @@ describe('HomeComponent', () => {
     (component as any).ensureFocusedPost();
     expect(component.autoOpenCommentPostId).toBeNull();
   });
+
+  it('triggers auto open when focused post exists', () => {
+    component.posts = [{ id: 3 } as any];
+    component.focusedPostId = 3;
+    (component as any).ensureFocusedPost();
+    expect(component.autoOpenCommentPostId).toBe(3);
+  });
 });

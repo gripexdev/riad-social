@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { NgZone } from '@angular/core';
+import { Client } from '@stomp/stompjs';
 import { MessageRealtimeService } from './message-realtime.service';
 import { AuthService } from '../auth/auth.service';
 
@@ -60,5 +61,16 @@ describe('MessageRealtimeService', () => {
     (service as any).client = { active: false, publish: publishSpy };
     service.sendTyping(3, true);
     expect(publishSpy).not.toHaveBeenCalled();
+  });
+
+  it('connects when token is available', () => {
+    const activateSpy = spyOn(Client.prototype, 'activate').and.callFake(() => {});
+    const authService = TestBed.inject(AuthService) as any;
+    authService.getToken = () => 'token';
+    (window as any).SockJS = function SockJSMock() {};
+
+    service.connect();
+
+    expect(activateSpy).toHaveBeenCalled();
   });
 });

@@ -256,6 +256,21 @@ describe('PostCardComponent', () => {
     expect(result?.query).toBe('al');
   });
 
+  it('findMentionAtCaret returns null without @', () => {
+    const result = (component as any).findMentionAtCaret('hello there', 5);
+    expect(result).toBeNull();
+  });
+
+  it('closeMentionPicker resets state', () => {
+    (component as any).mentionOpen = true;
+    (component as any).mentionResults = [{ username: 'alice' }];
+    (component as any).mentionActiveInput = 'comment';
+    (component as any).closeMentionPicker();
+    expect((component as any).mentionOpen).toBeFalse();
+    expect((component as any).mentionResults.length).toBe(0);
+    expect((component as any).mentionActiveInput).toBeNull();
+  });
+
   it('returns empty parts for blank content', () => {
     expect(component.parseContent('')).toEqual([]);
   });
