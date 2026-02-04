@@ -83,4 +83,22 @@ describe('HomeComponent', () => {
     component.removePost(1);
     expect(component.posts.length).toBe(1);
   });
+
+  it('returns auto-open state', () => {
+    component.autoOpenCommentPostId = 5;
+    expect(component.getAutoOpenComments(5)).toBeTrue();
+    expect(component.getAutoOpenComments(1)).toBeFalse();
+  });
+
+  it('returns focused reply id', () => {
+    component.focusedPostId = 7;
+    component.focusedReplyId = 9;
+    expect(component.getFocusReplyId(7)).toBe(9);
+  });
+
+  it('clears avatar when no username', () => {
+    (component as any).authService.getUsername = () => null;
+    (component as any).loadCurrentUserProfile();
+    expect(component.currentUserProfilePictureUrl).toBeNull();
+  });
 });

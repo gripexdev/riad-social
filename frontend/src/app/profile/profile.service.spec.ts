@@ -18,28 +18,48 @@ describe('ProfileService', () => {
     httpMock.verify();
   });
 
-  it('should be created', () => {
-    expect(service).toBeTruthy();
-  });
-
-  it('requests profile', () => {
+  it('gets profile', () => {
     service.getProfile('alice').subscribe();
     const req = httpMock.expectOne('http://localhost:8080/api/users/alice');
     expect(req.request.method).toBe('GET');
     req.flush({});
   });
 
-  it('requests mention suggestions', () => {
-    service.getMentionSuggestions(4).subscribe();
-    const req = httpMock.expectOne((request) => request.url.endsWith('/mentions'));
-    expect(req.request.params.get('limit')).toBe('4');
-    req.flush([]);
+  it('follows and unfollows user', () => {
+    service.followUser('bob').subscribe();
+    const followReq = httpMock.expectOne('http://localhost:8080/api/users/bob/follow');
+    expect(followReq.request.method).toBe('POST');
+    followReq.flush({});
+
+    service.unfollowUser('bob').subscribe();
+    const unfollowReq = httpMock.expectOne('http://localhost:8080/api/users/bob/unfollow');
+    expect(unfollowReq.request.method).toBe('POST');
+    unfollowReq.flush({});
   });
 
-  it('updates profile with bio only', () => {
-    service.updateProfile('hello').subscribe();
+  it('updates profile with form data', () => {
+    const avatar = new File(['x'], 'avatar.png', { type: 'image/png' });
+    service.updateProfile('bio', avatar).subscribe();
     const req = httpMock.expectOne('http://localhost:8080/api/users/me');
     expect(req.request.method).toBe('PUT');
+    expect(req.request.body instanceof FormData).toBeTrue();
     req.flush({});
+  });
+
+  it('searches users and fetches mention suggestions', () => {
+    service.searchUsers('al', 5).subscribe();
+    const searchReq = httpMock.expectOne((request) =>
+      request.url === 'http://localhost:8080/api/users/search'
+    );
+    expect(searchReq.request.params.get('q')).toBe('al');
+    expect(searchReq.request.params.get('limit')).toBe('5');
+    searchReq.flush([]);
+
+    service.getMentionSuggestions(4).subscribe();
+    const mentionReq = httpMock.expectOne((request) =>
+      request.url === 'http://localhost:8080/api/users/mentions'
+    );
+    expect(mentionReq.request.params.get('limit')).toBe('4');
+    mentionReq.flush([]);
   });
 });

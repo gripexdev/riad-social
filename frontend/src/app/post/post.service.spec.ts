@@ -74,4 +74,36 @@ describe('PostService', () => {
     expect(req.request.body).toEqual({ emoji: 'ðŸ‘' });
     req.flush({});
   });
+  it('creates a post', () => {
+    const file = new File(['x'], 'photo.jpg', { type: 'image/jpeg' });
+    service.createPost(file, 'caption').subscribe();
+    const req = httpMock.expectOne('http://localhost:8080/api/posts');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body instanceof FormData).toBeTrue();
+    req.flush({});
+  });
+
+  it('toggles like and deletes comment', () => {
+    service.toggleLike(2).subscribe();
+    const likeReq = httpMock.expectOne('http://localhost:8080/api/posts/2/like');
+    expect(likeReq.request.method).toBe('POST');
+    likeReq.flush({});
+
+    service.deleteComment(2, 3).subscribe();
+    const deleteReq = httpMock.expectOne('http://localhost:8080/api/posts/2/comments/3');
+    expect(deleteReq.request.method).toBe('DELETE');
+    deleteReq.flush({});
+  });
+
+  it('updates and deletes posts', () => {
+    service.updatePost(4, 'new caption').subscribe();
+    const updateReq = httpMock.expectOne('http://localhost:8080/api/posts/4');
+    expect(updateReq.request.method).toBe('PUT');
+    updateReq.flush({});
+
+    service.deletePost(4).subscribe();
+    const deleteReq = httpMock.expectOne('http://localhost:8080/api/posts/4');
+    expect(deleteReq.request.method).toBe('DELETE');
+    deleteReq.flush({});
+  });
 });

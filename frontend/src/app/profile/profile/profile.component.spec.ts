@@ -136,4 +136,99 @@ describe('ProfileComponent', () => {
     component.onFollowToggle();
     expect(component.profile.isFollowing).toBeTrue();
   });
+
+  it('unfollows when already following', () => {
+    component.profile = {
+      username: 'bob',
+      fullName: 'Bob',
+      bio: '',
+      profilePictureUrl: '',
+      postCount: 0,
+      followerCount: 2,
+      followingCount: 0,
+      posts: [],
+      isFollowing: true
+    };
+    profileService.unfollowUser.and.returnValue(of(void 0));
+    component.onFollowToggle();
+    expect(component.profile.isFollowing).toBeFalse();
+  });
+
+  it('starts message navigation', () => {
+    spyOn(router, 'navigate');
+    component.profile = {
+      username: 'alice',
+      fullName: 'Alice',
+      bio: '',
+      profilePictureUrl: '',
+      postCount: 0,
+      followerCount: 0,
+      followingCount: 0,
+      posts: [],
+      isFollowing: false
+    };
+    component.startMessage();
+    expect(router.navigate).toHaveBeenCalledWith(['/messages'], { queryParams: { recipient: 'alice' } });
+  });
+
+  it('starts and cancels edit', () => {
+    component.profile = {
+      username: 'alice',
+      fullName: 'Alice',
+      bio: 'bio',
+      profilePictureUrl: '',
+      postCount: 0,
+      followerCount: 0,
+      followingCount: 0,
+      posts: [],
+      isFollowing: false
+    };
+    component.startEdit();
+    expect(component.isEditing).toBeTrue();
+    component.cancelEdit();
+    expect(component.isEditing).toBeFalse();
+  });
+
+  it('handles large avatar file', () => {
+    const bigFile = new File([new Uint8Array(11 * 1024 * 1024)], 'big.png', { type: 'image/png' });
+    const input = document.createElement('input');
+    Object.defineProperty(input, 'files', { value: [bigFile] });
+    component.onAvatarSelected({ currentTarget: input } as any);
+    expect(component.errorMessage).toContain('too large');
+  });
+
+  it('handles update profile error', () => {
+    profileService.updateProfile.and.returnValue(throwError(() => new Error('fail')));
+    component.profile = {
+      username: 'alice',
+      fullName: 'Alice',
+      bio: 'bio',
+      profilePictureUrl: '',
+      postCount: 0,
+      followerCount: 0,
+      followingCount: 0,
+      posts: [],
+      isFollowing: false
+    };
+    component.profileForm.setValue({ bio: 'bio' });
+    component.saveProfile();
+    expect(component.errorMessage).toContain('Failed to update profile');
+  });
+
+  it('removes post from profile', () => {
+    component.profile = {
+      username: 'alice',
+      fullName: 'Alice',
+      bio: '',
+      profilePictureUrl: '',
+      postCount: 2,
+      followerCount: 0,
+      followingCount: 0,
+      posts: [{ id: 1 } as any, { id: 2 } as any],
+      isFollowing: false
+    };
+    component.removePost(1);
+    expect(component.profile.posts.length).toBe(1);
+    expect(component.profile.postCount).toBe(1);
+  });
 });

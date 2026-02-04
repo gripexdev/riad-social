@@ -45,4 +45,18 @@ describe('NotificationRealtimeService', () => {
     const url = (service as any).buildSocketUrl('token');
     expect(url).toContain('ws?token=');
   });
+
+  it('disconnects active client', () => {
+    const deactivateSpy = jasmine.createSpy('deactivate');
+    (service as any).client = { deactivate: deactivateSpy } as any;
+    service.disconnect();
+    expect(deactivateSpy).toHaveBeenCalled();
+  });
+
+  it('handles invalid count payload', () => {
+    spyOn(console, 'error');
+    const message = { body: '{invalid' } as any;
+    (service as any).handleCount(message);
+    expect(console.error).toHaveBeenCalled();
+  });
 });
