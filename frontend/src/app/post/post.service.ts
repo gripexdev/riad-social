@@ -5,7 +5,23 @@ export interface CommentResponse {
   id: number;
   content: string;
   username: string;
+  profilePictureUrl?: string;
   createdAt: string;
+  parentId?: number | null;
+  replies?: CommentResponse[];
+  reactions?: CommentReactionCount[];
+  viewerReaction?: string | null;
+}
+
+export interface CommentReactionCount {
+  emoji: string;
+  count: number;
+}
+
+export interface CommentReactionSummary {
+  commentId: number;
+  reactions: CommentReactionCount[];
+  viewerReaction: string | null;
 }
 
 export interface Post {
@@ -37,6 +53,10 @@ export class PostService {
     return this.http.get<Post[]>(`${this.apiUrl}/explore`);
   }
 
+  getPostById(postId: number): Observable<Post> {
+    return this.http.get<Post>(`${this.apiUrl}/${postId}`);
+  }
+
   createPost(file: File, caption: string): Observable<Post> {
     const formData = new FormData();
     formData.append('file', file);
@@ -48,9 +68,17 @@ export class PostService {
     return this.http.post<Post>(`${this.apiUrl}/${postId}/like`, {});
   }
 
-  addComment(postId: number, content: string): Observable<CommentResponse> {
-    const commentRequest = { content: content };
+  addComment(postId: number, content: string, parentCommentId?: number | null): Observable<CommentResponse> {
+    const commentRequest = { content: content, parentCommentId: parentCommentId ?? null };
     return this.http.post<CommentResponse>(`${this.apiUrl}/${postId}/comment`, commentRequest);
+  }
+
+  toggleReplyReaction(postId: number, commentId: number, emoji: string): Observable<CommentReactionSummary> {
+    return this.http.post<CommentReactionSummary>(`${this.apiUrl}/${postId}/comments/${commentId}/reactions`, { emoji });
+  }
+
+  deleteComment(postId: number, commentId: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${postId}/comments/${commentId}`);
   }
 
   updatePost(postId: number, caption: string): Observable<Post> {

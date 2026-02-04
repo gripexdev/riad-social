@@ -10,6 +10,8 @@ public class NotificationResponse {
     private String actorProfilePictureUrl;
     private Long postId;
     private String postImageUrl;
+    private Long commentId;
+    private Long parentCommentId;
     private String commentPreview;
     private LocalDateTime createdAt;
     @JsonProperty("isRead")
@@ -24,6 +26,8 @@ public class NotificationResponse {
             String actorProfilePictureUrl,
             Long postId,
             String postImageUrl,
+            Long commentId,
+            Long parentCommentId,
             String commentPreview,
             LocalDateTime createdAt,
             boolean isRead,
@@ -35,6 +39,8 @@ public class NotificationResponse {
         this.actorProfilePictureUrl = actorProfilePictureUrl;
         this.postId = postId;
         this.postImageUrl = postImageUrl;
+        this.commentId = commentId;
+        this.parentCommentId = parentCommentId;
         this.commentPreview = commentPreview;
         this.createdAt = createdAt;
         this.isRead = isRead;
@@ -63,6 +69,14 @@ public class NotificationResponse {
 
     public String getPostImageUrl() {
         return postImageUrl;
+    }
+
+    public Long getCommentId() {
+        return commentId;
+    }
+
+    public Long getParentCommentId() {
+        return parentCommentId;
     }
 
     public String getCommentPreview() {

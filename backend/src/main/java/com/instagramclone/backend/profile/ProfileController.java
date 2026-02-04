@@ -1,5 +1,6 @@
 package com.instagramclone.backend.profile;
 
+import com.instagramclone.backend.post.CommentMapper;
 import com.instagramclone.backend.post.CommentResponse;
 import com.instagramclone.backend.post.Post;
 import com.instagramclone.backend.post.PostResponse;
@@ -26,11 +27,18 @@ public class ProfileController {
     private final UserService userService;
     private final PostService postService;
     private final FileSystemStorageService storageService;
+    private final com.instagramclone.backend.post.CommentReactionService reactionService;
 
-    public ProfileController(UserService userService, PostService postService, FileSystemStorageService storageService) {
+    public ProfileController(
+            UserService userService,
+            PostService postService,
+            FileSystemStorageService storageService,
+            com.instagramclone.backend.post.CommentReactionService reactionService
+    ) {
         this.userService = userService;
         this.postService = postService;
         this.storageService = storageService;
+        this.reactionService = reactionService;
     }
 
     @GetMapping("/{username}")
@@ -133,6 +141,30 @@ public class ProfileController {
         return ResponseEntity.ok(results);
     }
 
+    @GetMapping("/mentions")
+    public ResponseEntity<List<UserSearchResponse>> mentionSuggestions(
+            @RequestParam(name = "limit", defaultValue = "6") int limit,
+            Principal principal) {
+        if (principal == null || principal.getName() == null) {
+            return ResponseEntity.ok(List.of());
+        }
+        User currentUser = userService.findByUsername(principal.getName())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + principal.getName()));
+        int safeLimit = Math.max(1, Math.min(limit, 20));
+        return ResponseEntity.ok(currentUser.getFollowing().stream()
+                .filter(user -> user.getUsername() != null)
+                .filter(user -> !user.getUsername().equals(currentUser.getUsername()))
+                .sorted(java.util.Comparator.comparing(User::getUsername, String.CASE_INSENSITIVE_ORDER))
+                .limit(safeLimit)
+                .map(user -> new UserSearchResponse(
+                        user.getUsername(),
+                        user.getFullName(),
+                        user.getProfilePictureUrl(),
+                        true
+                ))
+                .collect(java.util.stream.Collectors.toList()));
+    }
+
     private ProfileResponse buildProfileResponse(User user, List<PostResponse> posts, User currentUser) {
         boolean isFollowing = false;
         if (currentUser != null && !currentUser.getUsername().equals(user.getUsername())) {
@@ -156,9 +188,9 @@ public class ProfileController {
         boolean likedByCurrentUser = post.getLikedBy().stream()
                 .anyMatch(user -> user.getUsername().equals(currentUsername));
 
-        List<CommentResponse> commentResponses = post.getComments().stream()
-                .map(comment -> new CommentResponse(comment.getId(), comment.getContent(), comment.getUser().getUsername(), comment.getCreatedAt()))
-                .collect(Collectors.toList());
+        com.instagramclone.backend.post.CommentReactionService.CommentReactionLookup reactionLookup =
+                reactionService.buildLookup(post.getComments(), currentUsername);
+        List<CommentResponse> commentResponses = CommentMapper.toThreadedResponses(post.getComments(), reactionLookup);
 
         return new PostResponse(
                 post.getId(),

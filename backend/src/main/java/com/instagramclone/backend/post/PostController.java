@@ -24,10 +24,12 @@ public class PostController {
 
     private final PostService postService;
     private final FileSystemStorageService storageService;
+    private final CommentReactionService reactionService;
 
-    public PostController(PostService postService, FileSystemStorageService storageService) {
+    public PostController(PostService postService, FileSystemStorageService storageService, CommentReactionService reactionService) {
         this.postService = postService;
         this.storageService = storageService;
+        this.reactionService = reactionService;
     }
 
     @PostMapping("/posts")
@@ -93,10 +95,52 @@ public class PostController {
     }
 
     @PostMapping("/posts/{id}/comment")
-    public ResponseEntity<Comment> addComment(@PathVariable Long id, @RequestBody CommentRequest commentRequest, Principal principal) {
+    public ResponseEntity<CommentResponse> addComment(@PathVariable Long id, @RequestBody CommentRequest commentRequest, Principal principal) {
         String commenterUsername = principal.getName();
-        Comment newComment = postService.addComment(id, commentRequest.getContent(), commenterUsername);
-        return ResponseEntity.ok(newComment);
+        Comment newComment = postService.addComment(id, commentRequest.getContent(), commenterUsername, commentRequest.getParentCommentId());
+        Long parentId = newComment.getParentComment() == null ? null : newComment.getParentComment().getId();
+        CommentResponse response = new CommentResponse(
+                newComment.getId(),
+                newComment.getContent(),
+                newComment.getUser().getUsername(),
+                newComment.getUser().getProfilePictureUrl(),
+                newComment.getCreatedAt(),
+                parentId,
+                List.of(),
+                List.of(),
+                null
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/posts/{postId}/comments/{commentId}/reactions")
+    public ResponseEntity<CommentReactionSummaryResponse> toggleReplyReaction(
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            @RequestBody CommentReactionRequest request,
+            Principal principal
+    ) {
+        if (principal == null || principal.getName() == null || principal.getName().isBlank()) {
+            return ResponseEntity.status(401).build();
+        }
+        CommentReactionSummaryResponse response = reactionService.toggleReaction(
+                postId,
+                commentId,
+                request == null ? null : request.getEmoji(),
+                principal.getName()
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/posts/{postId}/comments/{commentId}")
+    public ResponseEntity<Void> deleteReply(
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            Principal principal
+    ) {
+        String username = principal.getName();
+        postService.deleteComment(postId, commentId, username);
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/posts/{id}")
@@ -139,9 +183,9 @@ public class PostController {
                 .anyMatch(user -> user.getUsername().equals(currentUsername));
         
         // Convert Comments to CommentResponse
-        List<CommentResponse> commentResponses = post.getComments().stream()
-                .map(comment -> new CommentResponse(comment.getId(), comment.getContent(), comment.getUser().getUsername(), comment.getCreatedAt()))
-                .collect(Collectors.toList());
+        CommentReactionService.CommentReactionLookup reactionLookup =
+                reactionService.buildLookup(post.getComments(), currentUsername);
+        List<CommentResponse> commentResponses = CommentMapper.toThreadedResponses(post.getComments(), reactionLookup);
 
         return new PostResponse(
                 post.getId(),

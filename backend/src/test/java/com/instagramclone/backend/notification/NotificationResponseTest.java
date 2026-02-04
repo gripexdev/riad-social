@@ -18,6 +18,8 @@ class NotificationResponseTest {
                 "profile",
                 15L,
                 "post-image",
+                21L,
+                13L,
                 "preview",
                 createdAt,
                 true,
@@ -30,6 +32,8 @@ class NotificationResponseTest {
         assertEquals("profile", response.getActorProfilePictureUrl());
         assertEquals(15L, response.getPostId());
         assertEquals("post-image", response.getPostImageUrl());
+        assertEquals(21L, response.getCommentId());
+        assertEquals(13L, response.getParentCommentId());
         assertEquals("preview", response.getCommentPreview());
         assertEquals(createdAt, response.getCreatedAt());
         assertTrue(response.getIsRead());

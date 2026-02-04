@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -31,11 +32,14 @@ class NotificationServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     private NotificationService notificationService;
 
     @BeforeEach
     void setUp() {
-        notificationService = new NotificationService(notificationRepository, userRepository);
+        notificationService = new NotificationService(notificationRepository, userRepository, eventPublisher);
     }
 
     @Test
@@ -167,6 +171,57 @@ class NotificationServiceTest {
         notificationService.createCommentNotification(sameUser, selfPost, selfComment);
 
         verify(notificationRepository, never()).save(any(Notification.class));
+    }
+
+    @Test
+    void createCommentNotification_withRecipient_savesNotification() {
+        User actor = buildUser("alice");
+        User recipient = buildUser("bob");
+        Post post = new Post("image-url", "caption", buildUser("owner"));
+        post.setId(88L);
+        Comment comment = new Comment("hello", actor, post);
+        comment.setId(42L);
+
+        notificationService.createCommentNotification(actor, post, comment, recipient);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(captor.capture());
+        Notification saved = captor.getValue();
+        assertEquals(NotificationType.REPLY, saved.getType());
+        assertEquals(recipient, saved.getRecipient());
+        assertEquals(post.getId(), saved.getPostId());
+        assertEquals(42L, saved.getCommentId());
+    }
+
+    @Test
+    void createCommentNotification_withRecipient_skipsSelf() {
+        User actor = buildUser("alice");
+        Post post = new Post("image-url", "caption", buildUser("owner"));
+        Comment comment = new Comment("hello", actor, post);
+
+        notificationService.createCommentNotification(actor, post, comment, actor);
+
+        verify(notificationRepository, never()).save(any(Notification.class));
+    }
+
+    @Test
+    void createMentionNotification_savesNotification() {
+        User actor = buildUser("alice");
+        User recipient = buildUser("bob");
+        Post post = new Post("image-url", "caption", buildUser("owner"));
+        post.setId(44L);
+        Comment comment = new Comment("@bob hello", actor, post);
+        comment.setId(12L);
+
+        notificationService.createMentionNotification(actor, post, comment, recipient);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(captor.capture());
+        Notification saved = captor.getValue();
+        assertEquals(NotificationType.MENTION, saved.getType());
+        assertEquals(recipient, saved.getRecipient());
+        assertEquals(post.getId(), saved.getPostId());
+        assertEquals(12L, saved.getCommentId());
     }
 
     @Test

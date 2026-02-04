@@ -4,25 +4,30 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { of, Subject, throwError } from 'rxjs';
 import { AppComponent } from './app.component';
 import { AuthService } from './auth/auth.service';
+import { NotificationRealtimeService } from './notifications/notification-realtime.service';
 import { NotificationService } from './notifications/notification.service';
 import { ProfileService } from './profile/profile.service';
 
 describe('AppComponent', () => {
   let authServiceSpy: jasmine.SpyObj<AuthService>;
+  let notificationRealtimeServiceSpy: jasmine.SpyObj<NotificationRealtimeService>;
   let notificationServiceSpy: jasmine.SpyObj<NotificationService>;
   let profileServiceSpy: jasmine.SpyObj<ProfileService>;
 
   beforeEach(async () => {
     authServiceSpy = jasmine.createSpyObj<AuthService>('AuthService', ['isAuthenticated', 'removeToken', 'getUsername']);
+    notificationRealtimeServiceSpy = jasmine.createSpyObj<NotificationRealtimeService>('NotificationRealtimeService', ['connect', 'disconnect', 'onCount']);
     notificationServiceSpy = jasmine.createSpyObj<NotificationService>('NotificationService', ['getNotifications', 'getUnreadCount', 'markAllRead']);
     profileServiceSpy = jasmine.createSpyObj<ProfileService>('ProfileService', ['followUser', 'unfollowUser']);
     authServiceSpy.isAuthenticated.and.returnValue(false);
     authServiceSpy.getUsername.and.returnValue('user');
+    notificationRealtimeServiceSpy.onCount.and.returnValue(new Subject<number>().asObservable());
 
     await TestBed.configureTestingModule({
       imports: [AppComponent, RouterTestingModule],
       providers: [
         { provide: AuthService, useValue: authServiceSpy },
+        { provide: NotificationRealtimeService, useValue: notificationRealtimeServiceSpy },
         { provide: NotificationService, useValue: notificationServiceSpy },
         { provide: ProfileService, useValue: profileServiceSpy }
       ]
@@ -48,6 +53,7 @@ describe('AppComponent', () => {
     expect(app.getNotificationMessage({ type: 'FOLLOW' } as any)).toBe('started following you.');
     expect(app.getNotificationMessage({ type: 'LIKE' } as any)).toBe('liked your post.');
     expect(app.getNotificationMessage({ type: 'COMMENT' } as any)).toBe('commented on your post.');
+    expect(app.getNotificationMessage({ type: 'REPLY' } as any)).toBe('replied to your comment.');
     expect(app.getNotificationMessage({ type: 'UNKNOWN' } as any)).toBe('sent you a notification.');
   });
 

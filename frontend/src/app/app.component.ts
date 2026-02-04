@@ -3,8 +3,9 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { AuthService } from './auth/auth.service';
 import { CommonModule } from '@angular/common';
 import { AppNotification, NotificationService } from './notifications/notification.service';
+import { NotificationRealtimeService } from './notifications/notification-realtime.service';
 import { ProfileService } from './profile/profile.service';
-import { Subject } from 'rxjs';
+import { Subject, Subscription } from 'rxjs';
 import { filter, takeUntil } from 'rxjs/operators';
 
 @Component({
@@ -29,17 +30,20 @@ export class AppComponent implements OnInit, OnDestroy {
   unreadCount = 0;
   private readonly followRequestUsernames = new Set<string>();
   private unreadPollId: number | null = null;
+  private notificationRealtimeSubscription: Subscription | null = null;
   private readonly destroy$ = new Subject<void>();
 
   constructor(
     public authService: AuthService,
     private router: Router,
     private notificationService: NotificationService,
+    private notificationRealtimeService: NotificationRealtimeService,
     private profileService: ProfileService
   ) {}
 
   ngOnInit(): void {
     this.closeNotifications();
+    this.syncNotificationRealtime();
     this.syncUnreadPolling();
     this.updateRouteState(this.router.url);
     this.router.events
@@ -49,6 +53,7 @@ export class AppComponent implements OnInit, OnDestroy {
       )
       .subscribe(() => {
         this.closeNotifications();
+        this.syncNotificationRealtime();
         this.syncUnreadPolling();
         this.updateRouteState(this.router.url);
       });
@@ -57,6 +62,7 @@ export class AppComponent implements OnInit, OnDestroy {
   logout(): void {
     this.authService.removeToken();
     this.closeNotifications();
+    this.stopNotificationRealtime();
     this.stopUnreadPolling();
     this.notifications = [];
     this.recentNotifications = [];
@@ -134,8 +140,33 @@ export class AppComponent implements OnInit, OnDestroy {
         return 'liked your post.';
       case 'COMMENT':
         return 'commented on your post.';
+      case 'REPLY':
+        return 'replied to your comment.';
+      case 'MENTION':
+        return 'mentioned you on a post.';
       default:
         return 'sent you a notification.';
+    }
+  }
+
+  openNotification(notification: AppNotification): void {
+    if (notification.type === 'FOLLOW') {
+      this.router.navigate(['/users', notification.actorUsername]);
+      this.closeNotifications();
+      return;
+    }
+    if (notification.postId) {
+      const queryParams: Record<string, number | string> = { postId: notification.postId };
+      if (notification.parentCommentId && notification.commentId) {
+        queryParams['commentId'] = notification.parentCommentId;
+        queryParams['replyId'] = notification.commentId;
+      } else if (notification.commentId) {
+        queryParams['commentId'] = notification.commentId;
+      }
+      // Force param change so the home view scrolls even if we're already on the same URL.
+      queryParams['focus'] = Date.now();
+      this.router.navigate(['/home'], { queryParams });
+      this.closeNotifications();
     }
   }
 
@@ -241,6 +272,14 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
+  private syncNotificationRealtime(): void {
+    if (this.authService.isAuthenticated()) {
+      this.startNotificationRealtime();
+    } else {
+      this.stopNotificationRealtime();
+    }
+  }
+
   private startUnreadPolling(): void {
     if (this.unreadPollId !== null) {
       return;
@@ -262,11 +301,35 @@ export class AppComponent implements OnInit, OnDestroy {
     this.unreadPollId = null;
   }
 
+  private startNotificationRealtime(): void {
+    if (this.notificationRealtimeSubscription) {
+      return;
+    }
+    this.notificationRealtimeService.connect();
+    this.notificationRealtimeSubscription = this.notificationRealtimeService.onCount().subscribe({
+      next: (count) => {
+        this.unreadCount = count;
+      },
+      error: (err) => {
+        console.error('Failed to receive realtime notification count', err);
+      }
+    });
+  }
+
+  private stopNotificationRealtime(): void {
+    if (this.notificationRealtimeSubscription) {
+      this.notificationRealtimeSubscription.unsubscribe();
+      this.notificationRealtimeSubscription = null;
+    }
+    this.notificationRealtimeService.disconnect();
+  }
+
   private updateRouteState(url: string): void {
     this.isMessagesRoute = url.startsWith('/messages');
   }
 
   ngOnDestroy(): void {
+    this.stopNotificationRealtime();
     this.stopUnreadPolling();
     this.destroy$.next();
     this.destroy$.complete();

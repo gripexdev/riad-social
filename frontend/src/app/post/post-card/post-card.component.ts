@@ -1,12 +1,15 @@
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, TemplateRef, ViewChild, ViewContainerRef } from '@angular/core';
 import { Post, PostService, CommentResponse } from '../post.service';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, switchMap, takeUntil } from 'rxjs/operators';
 import { PostDialogService } from '../post-dialog.service';
+import { ProfileService, UserSearchResult } from '../../profile/profile.service';
+import { ConnectedPosition, Overlay, OverlayRef } from '@angular/cdk/overlay';
+import { TemplatePortal } from '@angular/cdk/portal';
 
 @Component({
   selector: 'app-post-card',
@@ -19,12 +22,17 @@ import { PostDialogService } from '../post-dialog.service';
   templateUrl: './post-card.component.html',
   styleUrl: './post-card.component.scss'
 })
-export class PostCardComponent implements OnInit, OnDestroy {
+export class PostCardComponent implements OnInit, OnChanges, OnDestroy {
+  @ViewChild('mentionMenuTemplate') mentionMenuTemplate!: TemplateRef<unknown>;
   @Input() post!: Post;
   @Input() canEdit: boolean = false;
   @Input() canDelete: boolean = false;
+  @Input() autoOpenComments: boolean = false;
+  @Input() focusCommentId: number | null = null;
+  @Input() focusReplyId: number | null = null;
   @Output() postDeleted = new EventEmitter<number>();
   commentForm!: FormGroup;
+  replyForm!: FormGroup;
   editForm!: FormGroup;
   showComments: boolean = false;
   currentUsername: string | null = null;
@@ -33,19 +41,42 @@ export class PostCardComponent implements OnInit, OnDestroy {
   isSaving: boolean = false;
   errorMessage: string | null = null;
   showDeleteConfirm: boolean = false;
+  activeReplyCommentId: number | null = null;
+  replyTargetUsername: string | null = null;
+  readonly reactionEmojis = ['❤️', '😂', '😮', '😢', '😡', '👍'];
+  private reactingReplyIds = new Set<number>();
+  activeReactionPickerId: number | null = null;
+  private expandedReplyIds = new Set<number>();
+  mentionResults: UserSearchResult[] = [];
+  mentionOpen = false;
+  mentionIndex = 0;
+  mentionActiveInput: 'comment' | 'reply' | null = null;
+  private mentionSearch$ = new Subject<string>();
+  private mentionInputEl: HTMLInputElement | null = null;
+  private mentionStartIndex: number | null = null;
+  private mentionCaretIndex: number | null = null;
+  private mentionCloseTimer: number | null = null;
+  private mentionOverlayRef: OverlayRef | null = null;
+  private mentionOriginEl: HTMLElement | null = null;
   private readonly destroy$ = new Subject<void>();
 
   constructor(
     private postService: PostService,
     private authService: AuthService,
     private fb: FormBuilder,
-    private postDialogService: PostDialogService
+    private postDialogService: PostDialogService,
+    private profileService: ProfileService,
+    private overlay: Overlay,
+    private viewContainerRef: ViewContainerRef
   ) {}
 
   ngOnInit(): void {
     this.currentUsername = this.authService.getUsername();
     this.commentForm = this.fb.group({
       comment: ['', Validators.required]
+    });
+    this.replyForm = this.fb.group({
+      reply: ['', Validators.required]
     });
     this.editForm = this.fb.group({
       caption: ['']
@@ -55,6 +86,46 @@ export class PostCardComponent implements OnInit, OnDestroy {
       .subscribe((activeId) => {
         this.showDeleteConfirm = activeId === this.post.id;
       });
+    this.mentionSearch$
+      .pipe(
+        debounceTime(200),
+        distinctUntilChanged(),
+        switchMap((query) =>
+          query.length < 2
+            ? this.profileService.getMentionSuggestions(6)
+            : this.profileService.searchUsers(query, 6)
+        ),
+        takeUntil(this.destroy$)
+      )
+      .subscribe({
+        next: (results) => {
+          this.mentionResults = results || [];
+          this.mentionIndex = 0;
+          this.mentionOpen = this.mentionResults.length > 0;
+          if (this.mentionResults.length === 0) {
+            this.mentionOpen = false;
+          }
+          if (this.mentionOpen) {
+            this.openMentionOverlay();
+          } else {
+            this.closeMentionOverlay();
+          }
+        },
+        error: () => {
+          this.mentionResults = [];
+          this.mentionOpen = false;
+          this.mentionOpen = false;
+        }
+      });
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['autoOpenComments'] && this.autoOpenComments) {
+      this.showComments = true;
+    }
+    if ((changes['focusCommentId'] && this.focusCommentId) || (changes['focusReplyId'] && this.focusReplyId)) {
+      this.showComments = true;
+    }
   }
 
   toggleLike(): void {
@@ -80,8 +151,11 @@ export class PostCardComponent implements OnInit, OnDestroy {
           const newComment: CommentResponse = {
             id: newCommentBackend.id,
             content: newCommentBackend.content,
-            username: this.currentUsername!,
-            createdAt: new Date().toISOString()
+            username: newCommentBackend.username || this.currentUsername!,
+            profilePictureUrl: newCommentBackend.profilePictureUrl,
+            createdAt: newCommentBackend.createdAt || new Date().toISOString(),
+            parentId: newCommentBackend.parentId ?? null,
+            replies: newCommentBackend.replies ?? []
           };
           this.post.comments.push(newComment);
           this.commentForm.reset();
@@ -91,8 +165,281 @@ export class PostCardComponent implements OnInit, OnDestroy {
     }
   }
 
+  startReply(comment: CommentResponse): void {
+    if (!this.currentUsername) {
+      return;
+    }
+    this.activeReplyCommentId = comment.id;
+    this.replyTargetUsername = comment.username;
+    this.replyForm.reset();
+  }
+
+  cancelReply(): void {
+    this.activeReplyCommentId = null;
+    this.replyTargetUsername = null;
+    this.replyForm.reset();
+  }
+
+  addReply(comment: CommentResponse): void {
+    if (!this.currentUsername || !this.replyForm.valid) {
+      return;
+    }
+    const content = this.replyForm.value.reply;
+    this.postService.addComment(this.post.id, content, comment.id).subscribe({
+      next: (replyBackend) => {
+        const reply: CommentResponse = {
+          id: replyBackend.id,
+          content: replyBackend.content,
+          username: replyBackend.username || this.currentUsername!,
+          profilePictureUrl: replyBackend.profilePictureUrl,
+          createdAt: replyBackend.createdAt || new Date().toISOString(),
+          parentId: replyBackend.parentId ?? comment.id,
+          replies: []
+        };
+        if (!comment.replies) {
+          comment.replies = [];
+        }
+        comment.replies.push(reply);
+        comment.replies = [...comment.replies];
+        this.post.comments = [...this.post.comments];
+        this.refreshPostComments();
+        this.cancelReply();
+      },
+      error: (err) => {
+        console.error('Error adding reply', err);
+        this.errorMessage = 'Failed to add reply. Please try again.';
+      }
+    });
+  }
+
+  deleteReply(parentComment: CommentResponse, reply: CommentResponse): void {
+    if (!this.currentUsername || reply.username !== this.currentUsername) {
+      return;
+    }
+    this.postService.deleteComment(this.post.id, reply.id).subscribe({
+      next: () => {
+        if (!parentComment.replies) {
+          return;
+        }
+        parentComment.replies = parentComment.replies.filter((item) => item.id !== reply.id);
+      },
+      error: (err) => console.error('Error deleting reply', err)
+    });
+  }
+
+  toggleReplyReaction(reply: CommentResponse, emoji: string): void {
+    if (!this.currentUsername || !reply || !reply.id) {
+      return;
+    }
+    if (this.reactingReplyIds.has(reply.id)) {
+      return;
+    }
+    this.reactingReplyIds.add(reply.id);
+    this.postService.toggleReplyReaction(this.post.id, reply.id, emoji).subscribe({
+      next: (summary) => {
+        reply.reactions = summary.reactions || [];
+        reply.viewerReaction = summary.viewerReaction ?? null;
+        this.reactingReplyIds.delete(reply.id);
+      },
+      error: (err) => {
+        console.error('Error reacting to reply', err);
+        this.reactingReplyIds.delete(reply.id);
+      }
+    });
+  }
+
+  toggleReactionPicker(reply: CommentResponse): void {
+    if (!reply || !reply.id) {
+      return;
+    }
+    this.activeReactionPickerId = this.activeReactionPickerId === reply.id ? null : reply.id;
+  }
+
+  closeReactionPicker(): void {
+    this.activeReactionPickerId = null;
+  }
+
+  getReactionSummary(reply: CommentResponse): string {
+    if (!reply.reactions || reply.reactions.length === 0) {
+      return '';
+    }
+    const sorted = [...reply.reactions].sort((a, b) => b.count - a.count);
+    const top = sorted.slice(0, 2).map((item) => item.emoji).join(' ');
+    const total = sorted.reduce((sum, item) => sum + item.count, 0);
+    return `${top} ${total}`.trim();
+  }
+
+  hasReaction(reply: CommentResponse, emoji: string): boolean {
+    return reply.viewerReaction === emoji;
+  }
+
+  getReactionCount(reply: CommentResponse, emoji: string): number {
+    if (!reply.reactions) {
+      return 0;
+    }
+    const match = reply.reactions.find((reaction) => reaction.emoji === emoji);
+    return match ? match.count : 0;
+  }
+
+  toggleReplies(comment: CommentResponse): void {
+    if (!comment || !comment.id) {
+      return;
+    }
+    if (this.expandedReplyIds.has(comment.id)) {
+      this.expandedReplyIds.delete(comment.id);
+    } else {
+      this.expandedReplyIds.add(comment.id);
+    }
+  }
+
+  isRepliesExpanded(comment: CommentResponse): boolean {
+    return !!comment?.id && this.expandedReplyIds.has(comment.id);
+  }
+
+  parseContent(content: string): Array<{ text: string; isMention: boolean; username?: string }> {
+    if (!content) {
+      return [];
+    }
+    const parts: Array<{ text: string; isMention: boolean; username?: string }> = [];
+    const regex = /@([a-zA-Z0-9._]+)/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(content)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ text: content.slice(lastIndex, match.index), isMention: false });
+      }
+      parts.push({ text: `@${match[1]}`, isMention: true, username: match[1] });
+      lastIndex = regex.lastIndex;
+    }
+    if (lastIndex < content.length) {
+      parts.push({ text: content.slice(lastIndex), isMention: false });
+    }
+    return parts;
+  }
+
+  onMentionInput(event: Event, inputType: 'comment' | 'reply'): void {
+    const input = event.target as HTMLInputElement;
+    if (!input) {
+      return;
+    }
+    if (this.mentionCloseTimer !== null) {
+      window.clearTimeout(this.mentionCloseTimer);
+      this.mentionCloseTimer = null;
+    }
+    const caret = input.selectionStart ?? input.value.length;
+    const mention = this.findMentionAtCaret(input.value, caret);
+    if (!mention) {
+      this.closeMentionPicker();
+      return;
+    }
+    this.mentionActiveInput = inputType;
+    this.mentionInputEl = input;
+    this.mentionStartIndex = mention.start;
+    this.mentionCaretIndex = caret;
+    this.mentionSearch$.next(mention.query);
+  }
+
+  onMentionKeydown(event: KeyboardEvent): void {
+    if (!this.mentionOpen) {
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.mentionIndex = Math.min(this.mentionIndex + 1, this.mentionResults.length - 1);
+      return;
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.mentionIndex = Math.max(this.mentionIndex - 1, 0);
+      return;
+    }
+    if (event.key === 'Enter') {
+      const selected = this.mentionResults[this.mentionIndex];
+      if (selected) {
+        event.preventDefault();
+        this.selectMention(selected);
+      }
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.closeMentionPicker();
+    }
+  }
+
+  onMentionBlur(): void {
+    if (typeof window === 'undefined') {
+      this.closeMentionPicker();
+      return;
+    }
+    this.mentionCloseTimer = window.setTimeout(() => {
+      this.closeMentionPicker();
+    }, 150);
+  }
+
+  selectMention(user: UserSearchResult): void {
+    if (!this.mentionInputEl || this.mentionStartIndex === null || this.mentionCaretIndex === null) {
+      return;
+    }
+    const value = this.mentionInputEl.value;
+    const before = value.slice(0, this.mentionStartIndex);
+    const after = value.slice(this.mentionCaretIndex);
+    const insert = `@${user.username} `;
+    const nextValue = `${before}${insert}${after}`;
+    this.mentionInputEl.value = nextValue;
+    const nextCaret = before.length + insert.length;
+    this.mentionInputEl.setSelectionRange(nextCaret, nextCaret);
+    if (this.mentionActiveInput === 'comment') {
+      this.commentForm.patchValue({ comment: nextValue });
+    } else if (this.mentionActiveInput === 'reply') {
+      this.replyForm.patchValue({ reply: nextValue });
+    }
+    this.closeMentionPicker();
+  }
+
+  isMentionActive(inputType: 'comment' | 'reply'): boolean {
+    return this.mentionOpen && this.mentionActiveInput === inputType && this.mentionResults.length > 0;
+  }
+
+  private closeMentionPicker(): void {
+    this.mentionOpen = false;
+    this.mentionResults = [];
+    this.mentionActiveInput = null;
+    this.mentionInputEl = null;
+    this.mentionStartIndex = null;
+    this.mentionCaretIndex = null;
+    this.closeMentionOverlay();
+  }
+
+  private findMentionAtCaret(value: string, caret: number): { start: number; query: string } | null {
+    if (!value) {
+      return null;
+    }
+    let index = caret - 1;
+    while (index >= 0 && !/\s/.test(value[index])) {
+      index--;
+    }
+    const wordStart = index + 1;
+    const fragment = value.slice(wordStart, caret);
+    if (!fragment.startsWith('@')) {
+      return null;
+    }
+    const query = fragment.slice(1);
+    return { start: wordStart, query };
+  }
+
+
+
   toggleComments(): void {
     this.showComments = !this.showComments;
+  }
+
+  isFocusedComment(comment: CommentResponse): boolean {
+    return this.focusCommentId === comment.id;
+  }
+
+  isFocusedReply(reply: CommentResponse): boolean {
+    return this.focusReplyId === reply.id;
   }
 
   get isOwner(): boolean {
@@ -185,7 +532,65 @@ export class PostCardComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.closeMentionOverlay(true);
     this.destroy$.next();
     this.destroy$.complete();
   }
+
+  private refreshPostComments(): void {
+    this.postService.getPostById(this.post.id).subscribe({
+      next: (updatedPost) => {
+        this.post.comments = updatedPost.comments || [];
+      },
+      error: (err) => {
+        console.error('Failed to refresh comments', err);
+      }
+    });
+  }
+
+  private openMentionOverlay(): void {
+    if (!this.mentionInputEl || !this.mentionMenuTemplate) {
+      return;
+    }
+    if (!this.mentionOverlayRef || this.mentionOriginEl !== this.mentionInputEl) {
+      this.closeMentionOverlay(true);
+      const positions: ConnectedPosition[] = [
+        { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 6 },
+        { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -6 }
+      ];
+      const positionStrategy = this.overlay.position()
+        .flexibleConnectedTo(this.mentionInputEl)
+        .withPositions(positions)
+        .withFlexibleDimensions(false)
+        .withPush(true);
+      this.mentionOverlayRef = this.overlay.create({
+        positionStrategy,
+        scrollStrategy: this.overlay.scrollStrategies.reposition(),
+        hasBackdrop: false
+      });
+      this.mentionOriginEl = this.mentionInputEl;
+    }
+    if (this.mentionOverlayRef && !this.mentionOverlayRef.hasAttached()) {
+      const portal = new TemplatePortal(this.mentionMenuTemplate, this.viewContainerRef);
+      this.mentionOverlayRef.attach(portal);
+    }
+    const rect = this.mentionInputEl.getBoundingClientRect();
+    this.mentionOverlayRef?.updateSize({ width: rect.width });
+    this.mentionOverlayRef?.updatePosition();
+  }
+
+  private closeMentionOverlay(dispose: boolean = false): void {
+    if (this.mentionOverlayRef) {
+      if (dispose) {
+        this.mentionOverlayRef.dispose();
+        this.mentionOverlayRef = null;
+        this.mentionOriginEl = null;
+        return;
+      }
+      if (this.mentionOverlayRef.hasAttached()) {
+        this.mentionOverlayRef.detach();
+      }
+    }
+  }
+
 }

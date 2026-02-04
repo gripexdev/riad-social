@@ -27,6 +27,8 @@ class NotificationControllerTest {
                 "profile",
                 2L,
                 "post-image",
+                8L,
+                5L,
                 "preview",
                 LocalDateTime.now(),
                 false,
